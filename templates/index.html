@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0c0c10">
+    <meta name="description" content="L'agenda culturel de Lausanne — concerts, expositions, théâtre, festivals.">
+    <title>Lausanne Cultura — l'agenda culturel</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <a href="#main" class="skip-link">Aller au contenu</a>
+
+    <header class="topbar" id="topbar">
+        <div class="topbar-inner">
+            <a href="/" class="brand" aria-label="Lausanne Cultura">
+                <span class="brand-mark">L<span class="brand-dot">·</span>C</span>
+                <span class="brand-name">Lausanne <em>Cultura</em></span>
+            </a>
+            <button class="search-toggle" id="search-toggle" aria-label="Rechercher" aria-expanded="false">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            </button>
+        </div>
+        <div class="search-bar" id="search-bar" hidden>
+            <input type="search" id="search-input" placeholder="Rechercher un événement, un lieu…" autocomplete="off">
+        </div>
+    </header>
+
+    <main id="main">
+        <section class="hero">
+            <div class="hero-eyebrow">Agenda · Lausanne · {{ "" }}</div>
+            <h1 class="hero-title">
+                Vivez la <em>culture</em>,<br>une nuit à la fois.
+            </h1>
+            <p class="hero-lede">
+                Chaque scène, chaque exposition, chaque concert de la ville —
+                en un coup d'œil.
+            </p>
+            <div class="hero-meta">
+                <span id="event-count">—</span> événements
+                <span class="dot" aria-hidden="true">·</span>
+                <span id="category-count">—</span> thèmes
+            </div>
+        </section>
+
+        <section class="featured" aria-labelledby="featured-heading">
+            <div class="section-head">
+                <h2 id="featured-heading" class="section-title">À ne pas manquer</h2>
+                <p class="section-sub">Les rendez-vous majeurs sélectionnés cette saison.</p>
+            </div>
+            <div class="featured-rail" id="featured-rail">
+                <div class="skeleton skeleton-featured"></div>
+                <div class="skeleton skeleton-featured"></div>
+            </div>
+        </section>
+
+        <nav class="filters" id="filters" aria-label="Filtres par thème">
+            <button class="chip active" data-category="">Tout</button>
+        </nav>
+
+        <div id="themes-container">
+            <div class="skeleton-section">
+                <div class="skeleton skeleton-line"></div>
+                <div class="skeleton-rail">
+                    <div class="skeleton skeleton-card"></div>
+                    <div class="skeleton skeleton-card"></div>
+                    <div class="skeleton skeleton-card"></div>
+                </div>
+            </div>
+        </div>
+
+        <section class="empty" id="empty-state" hidden>
+            <p class="empty-glyph">∅</p>
+            <h3>Aucun événement trouvé</h3>
+            <p>Essayez un autre thème ou un mot-clé différent.</p>
+        </section>
+    </main>
+
+    <footer class="site-foot">
+        <div class="foot-inner">
+            <p class="foot-line">
+                Lausanne · Cultura — agenda culturel scrapé en temps réel
+            </p>
+            <p class="foot-credit">
+                Données <a href="https://agenda.lausanne.ch/" target="_blank" rel="noopener">agenda.lausanne.ch</a>
+                · Conception artisanale
+            </p>
+        </div>
+    </footer>
+
+    <div class="modal" id="modal" hidden aria-modal="true" role="dialog" aria-labelledby="modal-title">
+        <div class="modal-overlay" data-close></div>
+        <article class="modal-card" id="modal-card">
+            <button class="modal-close" data-close aria-label="Fermer">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+            <div class="modal-image" id="modal-image"></div>
+            <div class="modal-body">
+                <span class="modal-cat" id="modal-cat"></span>
+                <h2 id="modal-title"></h2>
+                <dl class="modal-meta">
+                    <div><dt>Date</dt><dd id="modal-date"></dd></div>
+                    <div><dt>Lieu</dt><dd id="modal-location"></dd></div>
+                    <div><dt>Tarif</dt><dd id="modal-price"></dd></div>
+                </dl>
+                <p id="modal-desc"></p>
+                <a class="modal-cta" id="modal-link" href="#" target="_blank" rel="noopener">
+                    Voir le site officiel
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 17 17 7M7 7h10v10"/></svg>
+                </a>
+            </div>
+        </article>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
