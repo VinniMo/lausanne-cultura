@@ -1,11 +1,15 @@
 """SQLite persistence layer for Lausanne Cultura events."""
-import sqlite3
+from __future__ import annotations
+
 import json
-import os
+import sqlite3
 import time
 from contextlib import contextmanager
+from typing import Iterator
 
-DB_PATH = os.environ.get("LAUSANNE_DB", os.path.join(os.path.dirname(__file__), "events.db"))
+from config import config
+
+DB_PATH = config.DB_PATH
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS events (
@@ -46,7 +50,8 @@ CREATE TABLE IF NOT EXISTS scrape_log (
 
 
 @contextmanager
-def get_conn():
+def get_conn() -> Iterator[sqlite3.Connection]:
+    """Yield a SQLite connection that auto-commits on exit and always closes."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     try:
@@ -56,14 +61,14 @@ def get_conn():
         conn.close()
 
 
-def init_db():
-    """Create tables if they don't exist."""
+def init_db() -> None:
+    """Create tables and indexes if they don't exist."""
     with get_conn() as conn:
         conn.executescript(SCHEMA)
 
 
-def upsert_event(evt: dict, source: str = "scraper"):
-    """Insert or update an event by id."""
+def upsert_event(evt: dict, source: str = "scraper") -> None:
+    """Insert or update an event keyed on its id."""
     now = time.time()
     tags = json.dumps(evt.get("tags", []), ensure_ascii=False)
     with get_conn() as conn:
@@ -90,7 +95,8 @@ def upsert_event(evt: dict, source: str = "scraper"):
         ))
 
 
-def bulk_upsert(events: list, source: str = "scraper"):
+def bulk_upsert(events: list[dict], source: str = "scraper") -> None:
+    """Upsert many events under the same source label."""
     for evt in events:
         upsert_event(evt, source=source)
 
@@ -105,7 +111,7 @@ def row_to_dict(row: sqlite3.Row) -> dict:
     return d
 
 
-def list_events(category: str = "", search: str = "") -> list:
+def list_events(category: str = "", search: str = "") -> list[dict]:
     sql = "SELECT * FROM events WHERE 1=1"
     params: list = []
     if category:
@@ -127,7 +133,7 @@ def count_events() -> int:
         return conn.execute("SELECT COUNT(*) AS n FROM events").fetchone()["n"]
 
 
-def list_categories() -> list:
+def list_categories() -> list[dict]:
     with get_conn() as conn:
         rows = conn.execute(
             "SELECT category, COUNT(*) AS n FROM events WHERE category != '' GROUP BY category ORDER BY n DESC"
@@ -135,7 +141,7 @@ def list_categories() -> list:
     return [{"name": r["category"], "count": r["n"]} for r in rows]
 
 
-def log_scrape(source: str, url: str, status: str, count: int, message: str = ""):
+def log_scrape(source: str, url: str, status: str, count: int, message: str = "") -> None:
     with get_conn() as conn:
         conn.execute(
             "INSERT INTO scrape_log (source, url, status, count, message, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
@@ -151,6 +157,6 @@ def last_scrape_time() -> float:
     return row["ts"] or 0.0
 
 
-def clear_events():
+def clear_events() -> None:
     with get_conn() as conn:
         conn.execute("DELETE FROM events")
