@@ -66,16 +66,16 @@ class Config:
         "https://zinema.ch/programme",
     )
 
+    @property
+    def SCRAPE_SOURCES(self) -> tuple[str, ...]:
+        """Combined source list: aggregators first (priority), then venues."""
+        return self.SCRAPE_AGGREGATORS + self.SCRAPE_VENUES
+
     CATEGORIES: tuple[str, ...] = (
         "Musique", "Théâtre", "Exposition", "Cinéma", "Danse",
         "Festival", "Famille", "Conférence", "Sport", "Humour",
         "Atelier", "Marché", "Clubbing",
     )
-
-    @property
-    def SCRAPE_SOURCES(self) -> tuple[str, ...]:
-        """Combined source list: aggregators first (priority), then venues."""
-        return self.SCRAPE_AGGREGATORS + self.SCRAPE_VENUES
 
 
 config = Config()
