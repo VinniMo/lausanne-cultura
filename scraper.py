@@ -19,11 +19,38 @@ from typing import Iterable
 
 import requests
 from bs4 import BeautifulSoup, Tag
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from config import config
 import db
 
 logger = logging.getLogger(__name__)
+
+
+def _build_session() -> requests.Session:
+    """Session HTTP réutilisable avec retries sur erreurs transitoires."""
+    s = requests.Session()
+    retry = Retry(
+        total=config.SCRAPE_RETRIES,
+        backoff_factor=1.5,
+        status_forcelist=(429, 500, 502, 503, 504),
+        allowed_methods=("GET",),
+        raise_on_status=False,
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    s.mount("http://", adapter)
+    s.mount("https://", adapter)
+    s.headers.update({
+        "User-Agent": config.SCRAPE_USER_AGENT,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "fr-CH,fr;q=0.9,en;q=0.5",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
+        "Upgrade-Insecure-Requests": "1",
+    })
+    return s
 
 EVENT_TYPES = {
     "Event", "MusicEvent", "TheaterEvent", "DanceEvent",
@@ -220,41 +247,44 @@ def _parse_card(card: Tag, base_url: str) -> dict | None:
     }
 
 
-def _fetch(url: str) -> str | None:
-    headers = {
-        "User-Agent": config.SCRAPE_USER_AGENT,
-        "Accept-Language": "fr-CH,fr;q=0.9,en;q=0.5",
-    }
+def _fetch(session: requests.Session, url: str) -> tuple[str | None, str]:
+    """Renvoie (html, message_erreur). html est None en cas d'échec."""
     try:
-        resp = requests.get(url, headers=headers, timeout=config.SCRAPE_TIMEOUT_SECONDS)
-        resp.raise_for_status()
-        return resp.text
+        resp = session.get(url, timeout=config.SCRAPE_TIMEOUT_SECONDS)
+        if resp.status_code >= 400:
+            msg = f"HTTP {resp.status_code}"
+            logger.warning("Fetch %s -> %s", url, msg)
+            return None, msg
+        return resp.text, ""
     except requests.RequestException as exc:
         logger.warning("Fetch failed for %s: %s", url, exc)
-        db.log_scrape("scraper", url, "error", 0, str(exc))
-        return None
+        return None, str(exc)[:200]
 
 
 def scrape_sources(sources: Iterable[str] | None = None) -> list[dict]:
-    """Scrape every source URL and return a deduplicated list of events."""
-    sources = sources or config.SCRAPE_SOURCES
+    """Scrape chaque URL et renvoie une liste d'événements dédupliqués."""
+    sources = list(sources) if sources is not None else list(config.SCRAPE_SOURCES)
     aggregated: dict[str, dict] = {}
+    session = _build_session()
 
     for url in sources:
-        html = _fetch(url)
-        if not html:
+        html, err = _fetch(session, url)
+        if html is None:
+            db.log_scrape("scraper", url, "error", 0, err)
             continue
 
         soup = BeautifulSoup(html, "lxml")
         found = _extract_jsonld_events(soup)
+        method = "json-ld"
         if not found:
             found = _extract_html_events(soup, base_url=url)
+            method = "html-fallback"
 
         for evt in found:
             aggregated[evt["id"]] = evt
 
-        db.log_scrape("scraper", url, "ok", len(found))
-        logger.info("Scraped %d events from %s", len(found), url)
+        db.log_scrape("scraper", url, "ok", len(found), method)
+        logger.info("Scraped %d events from %s (%s)", len(found), url, method)
 
     return list(aggregated.values())
 

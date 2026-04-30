@@ -122,6 +122,9 @@ def create_app() -> Flask:
             "status": "ok",
             "events_in_db": db.count_events(),
             "last_scrape": db.last_scrape_time(),
+            "scrape_interval_seconds": config.SCRAPE_INTERVAL_SECONDS,
+            "sources": db.latest_scrape_per_source(),
+            "configured_sources": list(config.SCRAPE_SOURCES),
         })
 
     @app.errorhandler(404)

@@ -157,6 +157,29 @@ def last_scrape_time() -> float:
     return row["ts"] or 0.0
 
 
+def latest_scrape_per_source() -> list[dict]:
+    """Retourne la dernière tentative de scrape pour chaque URL configurée."""
+    with get_conn() as conn:
+        rows = conn.execute("""
+            SELECT url, status, count, message, timestamp
+            FROM scrape_log
+            WHERE id IN (
+                SELECT MAX(id) FROM scrape_log GROUP BY url
+            )
+            ORDER BY timestamp DESC
+        """).fetchall()
+    return [
+        {
+            "url": r["url"],
+            "status": r["status"],
+            "count": r["count"],
+            "message": r["message"],
+            "timestamp": r["timestamp"],
+        }
+        for r in rows
+    ]
+
+
 def clear_events() -> None:
     with get_conn() as conn:
         conn.execute("DELETE FROM events")
