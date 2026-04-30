@@ -31,17 +31,15 @@ class Config:
     # Each entry: (display_name, url). Multiple URLs per venue can be listed
     # if the canonical agenda page is uncertain — probe will tell us which.
     SCRAPE_SOURCES_PRIORITY: tuple[tuple[str, str], ...] = (
-        ("Lausanne agenda",  "https://www.lausanne.ch/agenda-et-actualites/agenda.html"),
-        ("Plateforme 10",    "https://plateforme10.ch/agenda"),
-        ("Folklore",         "https://www.lefolklore.ch/"),
-        ("Romandie",         "https://leromandie.ch/agenda/"),
-        ("Le Bourg",         "https://le-bourg.ch/programme/"),
-        ("D! Club",          "https://dclub.ch/events/"),
-        ("Great Escape",     "https://www.the-great.ch/"),
-        ("Bleu Lézard",      "https://www.bleu-lezard.ch/programme/"),
-        ("Datcha",           "https://www.datcha.ch/"),
-        ("Resident Advisor", "https://ra.co/events/ch/lausanne"),
-        ("Shotgun",          "https://shotgun.live/fr/cities/lausanne"),
+        ("Lausanne Tourisme", "https://www.lausanne-tourisme.ch/en/where-to-go-out-in-lausanne/"),
+        ("Romandie",          "https://www.leromandie.ch/"),
+        ("Le Bourg",          "https://www.lebourg.ch/"),
+        ("Folklor Club",      "https://folklor.club/"),
+        ("Datcha",            "https://datcha.ch/"),
+        ("Great Escape",      "https://greatescape.ch/"),
+        ("Continuum Club",    "https://continuumclub.ch/"),
+        ("Punk Bar",          "https://punkbar.ch/"),
+        ("Chauderon 18",      "https://chauderon18.ch/"),
     )
 
     @property

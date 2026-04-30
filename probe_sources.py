@@ -43,52 +43,49 @@ HEADERS = {
 # Multiple URL candidates per venue: probe will tell us which one returns
 # something usable. Order = best guess first.
 CANDIDATES: list[tuple[str, list[str]]] = [
-    ("Lausanne agenda", [
-        "https://www.lausanne.ch/agenda-et-actualites/agenda.html",
-    ]),
-    ("Plateforme 10", [
-        "https://plateforme10.ch/agenda",
-        "https://plateforme10.ch/",
-    ]),
-    ("Folklore", [
-        "https://www.lefolklore.ch/",
-        "https://lefolklore.ch/",
-        "https://folkloreclub.ch/",
-        "https://folklore-club.ch/",
+    ("Lausanne Tourisme", [
+        "https://www.lausanne-tourisme.ch/en/where-to-go-out-in-lausanne/",
+        "https://www.lausanne-tourisme.ch/fr/sortir-a-lausanne/",
     ]),
     ("Romandie", [
-        "https://leromandie.ch/agenda/",
-        "https://leromandie.ch/programme/",
-        "https://leromandie.ch/",
+        "https://www.leromandie.ch/",
+        "https://www.leromandie.ch/agenda/",
+        "https://www.leromandie.ch/programme/",
     ]),
     ("Le Bourg", [
-        "https://le-bourg.ch/programme/",
-        "https://le-bourg.ch/agenda/",
-        "https://le-bourg.ch/",
+        "https://www.lebourg.ch/",
+        "https://www.lebourg.ch/programme/",
+        "https://www.lebourg.ch/agenda/",
     ]),
-    ("D! Club", [
-        "https://dclub.ch/events/",
-        "https://dclub.ch/agenda/",
-        "https://dclub.ch/",
-    ]),
-    ("Great Escape", [
-        "https://www.the-great.ch/",
-        "https://thegreatescape.ch/",
-    ]),
-    ("Bleu Lézard", [
-        "https://www.bleu-lezard.ch/programme/",
-        "https://www.bleu-lezard.ch/agenda/",
-        "https://www.bleu-lezard.ch/",
+    ("Folklor Club", [
+        "https://folklor.club/",
+        "https://folklor.club/events/",
+        "https://folklor.club/agenda/",
     ]),
     ("Datcha", [
-        "https://www.datcha.ch/",
         "https://datcha.ch/",
+        "https://datcha.ch/events/",
+        "https://datcha.ch/agenda/",
     ]),
-    ("Resident Advisor", [
-        "https://ra.co/events/ch/lausanne",
+    ("Great Escape", [
+        "https://greatescape.ch/",
+        "https://greatescape.ch/events/",
+        "https://greatescape.ch/agenda/",
     ]),
-    ("Shotgun", [
-        "https://shotgun.live/fr/cities/lausanne",
+    ("Continuum Club", [
+        "https://continuumclub.ch/",
+        "https://continuumclub.ch/events/",
+        "https://continuumclub.ch/agenda/",
+    ]),
+    ("Punk Bar", [
+        "https://punkbar.ch/",
+        "https://punkbar.ch/events/",
+        "https://punkbar.ch/agenda/",
+    ]),
+    ("Chauderon 18", [
+        "https://chauderon18.ch/",
+        "https://chauderon18.ch/programme/",
+        "https://chauderon18.ch/agenda/",
     ]),
 ]
 
