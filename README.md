@@ -74,6 +74,7 @@ Pas besoin d'API key GitHub CLI — tout est piloté par
 | `LAUSANNE_DB`     | `./events.db`  | Chemin SQLite                     |
 | `SCRAPE_INTERVAL` | `3600`         | TTL du cache scraping (secondes)  |
 | `SCRAPE_TIMEOUT`  | `12`           | Timeout HTTP du scraper           |
+| `APIFY_API_KEY`   | *(vide)*       | Token Apify (scraping avancé)     |
 
 ## Design
 

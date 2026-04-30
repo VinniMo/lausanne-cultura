@@ -25,6 +25,8 @@ class Config:
         "Mozilla/5.0 (compatible; LausanneCultura/1.0; +https://github.com/VinniMo/lausanne-cultura)",
     )
 
+    APIFY_API_KEY: str = os.environ.get("APIFY_API_KEY", "")
+
     # ----- Tier 1: aggregators (broad coverage, few sources) -----
     SCRAPE_AGGREGATORS: tuple[str, ...] = (
         "https://agenda.lausanne.ch/",

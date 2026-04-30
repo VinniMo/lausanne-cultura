@@ -14,3 +14,5 @@ services:
         sync: false
       - key: BASIC_AUTH_PASS
         sync: false
+      - key: APIFY_API_KEY
+        sync: false
