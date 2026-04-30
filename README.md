@@ -74,7 +74,19 @@ Pas besoin d'API key GitHub CLI — tout est piloté par
 | `LAUSANNE_DB`     | `./events.db`  | Chemin SQLite                     |
 | `SCRAPE_INTERVAL` | `3600`         | TTL du cache scraping (secondes)  |
 | `SCRAPE_TIMEOUT`  | `12`           | Timeout HTTP du scraper           |
-| `APIFY_API_KEY`   | *(vide)*       | Token Apify (scraping avancé)     |
+| `APIFY_API_KEY`   | *(vide)*       | Token Apify — fallback rendu JS   |
+
+### Configuration locale rapide
+
+Créer un fichier `.env.local` à la racine (ignoré par git) :
+
+```
+APIFY_API_KEY=apify_api_xxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+Il est chargé automatiquement au démarrage. Quand la clé est présente, les
+sources qui ne renvoient aucun événement par scraping classique sont
+automatiquement re-tentées via Apify (rendu JS via Playwright).
 
 ## Design
 

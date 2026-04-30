@@ -21,6 +21,7 @@ import requests
 from bs4 import BeautifulSoup, Tag
 
 from config import config
+import apify_scraper
 import db
 
 logger = logging.getLogger(__name__)
@@ -235,26 +236,48 @@ def _fetch(url: str) -> str | None:
         return None
 
 
+def _extract_from_html(html: str, url: str) -> list[dict]:
+    soup = BeautifulSoup(html, "lxml")
+    found = _extract_jsonld_events(soup)
+    if not found:
+        found = _extract_html_events(soup, base_url=url)
+    return found
+
+
 def scrape_sources(sources: Iterable[str] | None = None) -> list[dict]:
-    """Scrape every source URL and return a deduplicated list of events."""
+    """Scrape every source URL and return a deduplicated list of events.
+
+    Standard ``requests`` pass first; for sources that yielded zero events
+    (typically JS-heavy SPAs), retry through Apify when configured.
+    """
     sources = sources or config.SCRAPE_SOURCES
     aggregated: dict[str, dict] = {}
+    empty_sources: list[str] = []
 
     for url in sources:
         html = _fetch(url)
         if not html:
+            empty_sources.append(url)
             continue
 
-        soup = BeautifulSoup(html, "lxml")
-        found = _extract_jsonld_events(soup)
-        if not found:
-            found = _extract_html_events(soup, base_url=url)
-
+        found = _extract_from_html(html, url)
         for evt in found:
             aggregated[evt["id"]] = evt
 
         db.log_scrape("scraper", url, "ok", len(found))
         logger.info("Scraped %d events from %s", len(found), url)
+        if not found:
+            empty_sources.append(url)
+
+    if empty_sources and apify_scraper.is_enabled():
+        logger.info("Retrying %d empty sources via Apify", len(empty_sources))
+        rendered = apify_scraper.fetch_many(empty_sources)
+        for url, html in rendered.items():
+            found = _extract_from_html(html, url)
+            for evt in found:
+                aggregated[evt["id"]] = evt
+            db.log_scrape("apify", url, "ok", len(found))
+            logger.info("Apify scraped %d events from %s", len(found), url)
 
     return list(aggregated.values())
 

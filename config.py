@@ -4,6 +4,15 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
+try:
+    from dotenv import load_dotenv
+
+    _here = os.path.dirname(os.path.abspath(__file__))
+    load_dotenv(os.path.join(_here, ".env.local"))
+    load_dotenv(os.path.join(_here, ".env"))
+except ImportError:
+    pass
+
 
 @dataclass(frozen=True)
 class Config:
