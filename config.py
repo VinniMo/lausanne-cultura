@@ -25,16 +25,57 @@ class Config:
         "Mozilla/5.0 (compatible; LausanneCultura/1.0; +https://github.com/VinniMo/lausanne-cultura)",
     )
 
-    SCRAPE_SOURCES: tuple[str, ...] = (
+    # ----- Tier 1: aggregators (broad coverage, few sources) -----
+    SCRAPE_AGGREGATORS: tuple[str, ...] = (
         "https://agenda.lausanne.ch/",
         "https://www.lausanne.ch/vie-pratique/culture-et-loisirs/agenda.html",
+        "https://ra.co/events/ch/lausanne",
+        "https://shotgun.live/fr/cities/lausanne",
+        "https://plateforme10.ch/agenda",
+    )
+
+    # ----- Tier 2: venue-specific (alternative & niche scenes) -----
+    SCRAPE_VENUES: tuple[str, ...] = (
+        # Théâtre & danse
+        "https://vidy.ch/programme",
+        "https://arsenic.ch/saison",
+        "https://tkm.ch/saison",
+        "https://www.theatredebeaulieu.ch/programme",
+        "https://www.theatre-octogone.ch/saison",
+        # Concerts & alternatif
+        "https://lesdocks.ch/agenda",
+        "https://leromandie.ch/programme",
+        "https://le-bourg.ch/programme",
+        "https://www.chorus.ch/agenda",
+        "https://casinodemontbenon.ch/agenda",
+        # Clubbing
+        "https://dclub.ch/events",
+        "https://mad.ch/agenda",
+        "https://folklore-club.ch/events",
+        # Musique classique
+        "https://www.opera-lausanne.ch/saison",
+        "https://www.ocl.ch/concerts",
+        # Musées
+        "https://www.mcba.ch/expositions",
+        "https://elysee.ch/expositions",
+        "https://mudac.ch/expositions",
+        "https://www.fondation-hermitage.ch/expositions",
+        # Cinéma
+        "https://www.cinematheque.ch/programme",
+        "https://www.cinemabellevaux.ch/programme",
+        "https://zinema.ch/programme",
     )
 
     CATEGORIES: tuple[str, ...] = (
         "Musique", "Théâtre", "Exposition", "Cinéma", "Danse",
         "Festival", "Famille", "Conférence", "Sport", "Humour",
-        "Atelier", "Marché",
+        "Atelier", "Marché", "Clubbing",
     )
+
+    @property
+    def SCRAPE_SOURCES(self) -> tuple[str, ...]:
+        """Combined source list: aggregators first (priority), then venues."""
+        return self.SCRAPE_AGGREGATORS + self.SCRAPE_VENUES
 
 
 config = Config()

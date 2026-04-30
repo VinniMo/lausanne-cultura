@@ -1,4 +1,4 @@
-"""Scraper for the official Lausanne cultural agenda.
+"""Scraper for Lausanne cultural sources.
 
 Strategy:
     1. GET each configured source URL.
@@ -6,8 +6,7 @@ Strategy:
     3. Fall back to HTML heuristics if no structured data is present.
 
 The scraper is intentionally defensive: any individual page failure is
-logged and skipped, never raised. Callers receive a (possibly empty)
-list of normalized event dicts.
+logged and skipped, never raised.
 """
 from __future__ import annotations
 
@@ -33,19 +32,25 @@ EVENT_TYPES = {
 }
 
 CATEGORY_RULES: dict[str, tuple[str, ...]] = {
+    # Order matters — first match wins. Clubbing before Musique to catch DJ/techno.
+    "Clubbing":  ("techno", "house", "club night", "after", "rave", "warehouse",
+                  "underground", "boiler room", "dj set", "afterhour", "all night",
+                  "d! club", "mad club", "folklore", "datcha"),
     "Musique":   ("concert", "jazz", "rock", "classique", "opéra", "orchestre",
-                  "récital", "électronique", "dj", "chanson", "vivaldi",
-                  "beethoven", "brahms", "verdi"),
+                  "récital", "électronique", "electro", "dj", "chanson", "vivaldi",
+                  "beethoven", "brahms", "verdi", "live band", "punk", "metal",
+                  "indie", "pop", "folk", "hip-hop", "rap"),
     "Théâtre":   ("théâtre", "pièce", "comédie", "tragédie", "hamlet",
-                  "molière", "mise en scène"),
+                  "molière", "mise en scène", "spectacle", "monologue"),
     "Exposition": ("exposition", "expo", "vernissage", "galerie",
-                   "rétrospective", "musée"),
+                   "rétrospective", "musée", "installation"),
     "Cinéma":    ("cinéma", "film", "projection", "documentaire",
-                  "court-métrage", "ciné"),
-    "Danse":     ("danse", "ballet", "chorégraphie", "flamenco", "hip-hop"),
-    "Festival":  ("festival", "fête", "nuit des musées"),
+                  "court-métrage", "ciné", "avant-première"),
+    "Danse":     ("danse", "ballet", "chorégraphie", "flamenco",
+                  "contemporain", "performance"),
+    "Festival":  ("festival", "fête", "nuit des musées", "open air"),
     "Famille":   ("famille", "enfants", "jeune public", "marionnettes"),
-    "Conférence": ("conférence", "débat", "symposium", "lecture"),
+    "Conférence": ("conférence", "débat", "symposium", "lecture", "talk"),
     "Sport":     ("sport", "marathon", "course", "match", "tournoi"),
     "Humour":    ("humour", "comedy", "stand-up", "one-man-show"),
     "Atelier":   ("atelier", "workshop", "initiation"),
@@ -66,7 +71,6 @@ def categorize(title: str, description: str = "") -> str:
 
 
 def _parse_iso_date(value: str) -> tuple[str, str]:
-    """Return (yyyy-mm-dd, HH:MM) tuple from an ISO-8601 string. Best-effort."""
     if not value:
         return "", ""
     try:
@@ -158,8 +162,8 @@ def _extract_jsonld_events(soup: BeautifulSoup) -> list[dict]:
 
 def _extract_html_events(soup: BeautifulSoup, base_url: str) -> list[dict]:
     """Heuristic fallback: scan for elements that look like event cards."""
-    selector = re.compile(r"event|agenda|card", re.IGNORECASE)
-    candidates = soup.find_all(["article", "li", "div"], class_=selector, limit=60)
+    selector = re.compile(r"event|agenda|card|show|spectacle|concert", re.IGNORECASE)
+    candidates = soup.find_all(["article", "li", "div"], class_=selector, limit=80)
 
     events: list[dict] = []
     for card in candidates:
