@@ -223,10 +223,23 @@ def _parse_card(card: Tag, base_url: str) -> dict | None:
 def _fetch(url: str) -> str | None:
     headers = {
         "User-Agent": config.SCRAPE_USER_AGENT,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "fr-CH,fr;q=0.9,en;q=0.5",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Cache-Control": "no-cache",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1",
     }
     try:
-        resp = requests.get(url, headers=headers, timeout=config.SCRAPE_TIMEOUT_SECONDS)
+        resp = requests.get(
+            url,
+            headers=headers,
+            timeout=config.SCRAPE_TIMEOUT_SECONDS,
+            allow_redirects=True,
+        )
         resp.raise_for_status()
         return resp.text
     except requests.RequestException as exc:

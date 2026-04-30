@@ -19,57 +19,34 @@ class Config:
     )
 
     SCRAPE_INTERVAL_SECONDS: int = int(os.environ.get("SCRAPE_INTERVAL", "3600"))
-    SCRAPE_TIMEOUT_SECONDS: int = int(os.environ.get("SCRAPE_TIMEOUT", "12"))
+    SCRAPE_TIMEOUT_SECONDS: int = int(os.environ.get("SCRAPE_TIMEOUT", "20"))
     SCRAPE_USER_AGENT: str = os.environ.get(
         "SCRAPE_USER_AGENT",
-        "Mozilla/5.0 (compatible; LausanneCultura/1.0; +https://github.com/VinniMo/lausanne-cultura)",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/131.0.0.0 Safari/537.36",
     )
 
-    # ----- Tier 1: aggregators (broad coverage, few sources) -----
-    SCRAPE_AGGREGATORS: tuple[str, ...] = (
-        "https://agenda.lausanne.ch/",
-        "https://www.lausanne.ch/vie-pratique/culture-et-loisirs/agenda.html",
-        "https://ra.co/events/ch/lausanne",
-        "https://shotgun.live/fr/cities/lausanne",
-        "https://plateforme10.ch/agenda",
-    )
-
-    # ----- Tier 2: venue-specific (alternative & niche scenes) -----
-    SCRAPE_VENUES: tuple[str, ...] = (
-        # Théâtre & danse
-        "https://vidy.ch/programme",
-        "https://arsenic.ch/saison",
-        "https://tkm.ch/saison",
-        "https://www.theatredebeaulieu.ch/programme",
-        "https://www.theatre-octogone.ch/saison",
-        # Concerts & alternatif
-        "https://lesdocks.ch/agenda",
-        "https://leromandie.ch/programme",
-        "https://le-bourg.ch/programme",
-        "https://www.chorus.ch/agenda",
-        "https://casinodemontbenon.ch/agenda",
-        # Clubbing
-        "https://dclub.ch/events",
-        "https://mad.ch/agenda",
-        "https://folklore-club.ch/events",
-        # Musique classique
-        "https://www.opera-lausanne.ch/saison",
-        "https://www.ocl.ch/concerts",
-        # Musées
-        "https://www.mcba.ch/expositions",
-        "https://elysee.ch/expositions",
-        "https://mudac.ch/expositions",
-        "https://www.fondation-hermitage.ch/expositions",
-        # Cinéma
-        "https://www.cinematheque.ch/programme",
-        "https://www.cinemabellevaux.ch/programme",
-        "https://zinema.ch/programme",
+    # Priority sources — validated via probe_sources.py.
+    # Each entry: (display_name, url). Multiple URLs per venue can be listed
+    # if the canonical agenda page is uncertain — probe will tell us which.
+    SCRAPE_SOURCES_PRIORITY: tuple[tuple[str, str], ...] = (
+        ("Lausanne agenda",  "https://www.lausanne.ch/agenda-et-actualites/agenda.html"),
+        ("Plateforme 10",    "https://plateforme10.ch/agenda"),
+        ("Folklore",         "https://www.lefolklore.ch/"),
+        ("Romandie",         "https://leromandie.ch/agenda/"),
+        ("Le Bourg",         "https://le-bourg.ch/programme/"),
+        ("D! Club",          "https://dclub.ch/events/"),
+        ("Great Escape",     "https://www.the-great.ch/"),
+        ("Bleu Lézard",      "https://www.bleu-lezard.ch/programme/"),
+        ("Datcha",           "https://www.datcha.ch/"),
+        ("Resident Advisor", "https://ra.co/events/ch/lausanne"),
+        ("Shotgun",          "https://shotgun.live/fr/cities/lausanne"),
     )
 
     @property
     def SCRAPE_SOURCES(self) -> tuple[str, ...]:
-        """Combined source list: aggregators first (priority), then venues."""
-        return self.SCRAPE_AGGREGATORS + self.SCRAPE_VENUES
+        return tuple(url for _, url in self.SCRAPE_SOURCES_PRIORITY)
 
     CATEGORIES: tuple[str, ...] = (
         "Musique", "Théâtre", "Exposition", "Cinéma", "Danse",
