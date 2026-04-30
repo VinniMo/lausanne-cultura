@@ -10,7 +10,7 @@
     "5000": {
       "label": "Lausanne Cultura",
       "onAutoForward": "openPreview",
-      "visibility": "public"
+      "visibility": "private"
     }
   },
   "customizations": {

@@ -2,12 +2,9 @@
 from __future__ import annotations
 
 import logging
-import os
-import secrets
 import time
-from functools import wraps
 
-from flask import Flask, Response, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS
 
 import db
@@ -42,43 +39,12 @@ def maybe_refresh_from_scraper() -> None:
         logger.exception("Scraper refresh failed; falling back to existing data")
 
 
-def _check_auth(username: str, password: str) -> bool:
-    expected_user = os.environ.get("BASIC_AUTH_USER", "")
-    expected_pass = os.environ.get("BASIC_AUTH_PASS", "")
-    return (
-        secrets.compare_digest(username, expected_user)
-        and secrets.compare_digest(password, expected_pass)
-    )
-
-
-def _auth_required_response() -> Response:
-    return Response(
-        "Authentification requise.\n", 401,
-        {"WWW-Authenticate": 'Basic realm="Lausanne Cultura"'},
-    )
-
-
 def create_app() -> Flask:
     """Application factory."""
     app = Flask(__name__)
     CORS(app)
 
     bootstrap_database()
-
-    auth_enabled = bool(
-        os.environ.get("BASIC_AUTH_USER") and os.environ.get("BASIC_AUTH_PASS")
-    )
-
-    @app.before_request
-    def gate():
-        if not auth_enabled:
-            return None
-        if request.path == "/api/health":
-            return None
-        creds = request.authorization
-        if not creds or not _check_auth(creds.username or "", creds.password or ""):
-            return _auth_required_response()
-        return None
 
     @app.route("/")
     def index() -> str:
