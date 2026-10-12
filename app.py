@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 import os
 import secrets
+import threading
 import time
 from datetime import datetime
 
@@ -50,16 +51,32 @@ def bootstrap_database() -> None:
     ensure_demo_events()
 
 
-def maybe_refresh_from_scraper() -> None:
-    """Run a scrape pass if the cache TTL has expired, non-blocking-friendly."""
-    age = time.time() - db.last_scrape_time()
-    if age < config.SCRAPE_INTERVAL_SECONDS:
-        return
+_refresh_lock = threading.Lock()
+
+
+def _refresh_in_background() -> None:
     try:
         count = scraper.refresh_database()
         logger.info("Scraper refresh produced %d events", count)
     except Exception:
         logger.exception("Scraper refresh failed; falling back to existing data")
+    finally:
+        _refresh_lock.release()
+
+
+def maybe_refresh_from_scraper() -> None:
+    """Start a collection in the background when the last attempt is old.
+
+    Visitors are served the data already stored; they never wait for the
+    sources. Any attempt counts, so failing sources are retried at most
+    once per interval rather than on every page view.
+    """
+    age = time.time() - db.last_scrape_time()
+    if age < config.SCRAPE_INTERVAL_SECONDS:
+        return
+    if not _refresh_lock.acquire(blocking=False):
+        return  # a collection is already running in this process
+    threading.Thread(target=_refresh_in_background, daemon=True).start()
 
 
 def _check_auth(username: str, password: str) -> bool:
@@ -119,7 +136,7 @@ def create_app() -> Flask:
             events = [e for e in events if agenda.matches(e, search)]
 
         programme = agenda.build_programme(events, agenda.today_local())
-        last = db.last_scrape_time()
+        last = db.last_scrape_time(successful_only=True)
         return jsonify({
             **programme,
             "search": search,
@@ -150,6 +167,29 @@ def create_app() -> Flask:
         except Exception as exc:
             logger.exception("Manual refresh failed")
             return jsonify({"ok": False, "error": str(exc)}), 500
+
+    @app.route("/api/sources")
+    def api_sources():
+        """Which sources answer and how many events each one gives."""
+        latest = {row["url"]: row for row in db.source_status()}
+        sources = []
+        for url in config.SCRAPE_SOURCES:
+            row = latest.get(url)
+            sources.append({
+                "url": url,
+                "status": row["status"] if row else "jamais collectée",
+                "events": row["count"] if row else 0,
+                "detail": row["message"] if row else "",
+                "checked_at": (
+                    datetime.fromtimestamp(row["timestamp"], agenda.TZ).isoformat(timespec="minutes")
+                    if row else None
+                ),
+            })
+        working = sum(1 for s in sources if s["status"] == "ok")
+        return jsonify({
+            "summary": f"{working} source(s) sur {len(sources)} donnent des événements",
+            "sources": sorted(sources, key=lambda s: (s["status"] != "ok", -s["events"], s["url"])),
+        })
 
     @app.route("/api/health")
     def api_health():

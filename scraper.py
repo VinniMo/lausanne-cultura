@@ -1,9 +1,14 @@
 """Scraper for Lausanne cultural sources.
 
-Strategy:
-    1. GET each configured source URL.
-    2. Parse JSON-LD structured-data blocks (schema.org/Event variants).
-    3. Fall back to HTML heuristics if no structured data is present.
+Strategy, for each configured source URL:
+    1. iCalendar feed (BEGIN:VCALENDAR): read its VEVENT entries.
+    2. JSON-LD structured data (schema.org/Event variants) on the page.
+    3. Listing pages of known aggregators (config.DETAIL_LINK_PATTERNS):
+       follow the links to each event page and read its JSON-LD.
+    4. Fall back to HTML heuristics.
+
+Every source run is logged with the method used and the number of events
+found, so /api/sources can show which sources actually work.
 
 The scraper is intentionally defensive: any individual page failure is
 logged and skipped, never raised.
@@ -17,6 +22,7 @@ import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from typing import Iterable
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup, Tag
@@ -115,15 +121,41 @@ def _extract_location(location_field) -> tuple[str, str]:
     return "", ""
 
 
-def _normalize_jsonld(item: dict) -> dict | None:
+def _extract_price(offers) -> str:
+    """Price text from schema.org offers, or "" when the source gives none."""
+    if isinstance(offers, list):
+        texts = [t for t in (_extract_price(o) for o in offers) if t]
+        return " / ".join(dict.fromkeys(texts))
+    if not isinstance(offers, dict):
+        return ""
+    low, high = offers.get("lowPrice"), offers.get("highPrice")
+    price = offers.get("price", low)
+    currency = offers.get("priceCurrency") or "CHF"
+    try:
+        if price is not None and float(str(price).replace(",", ".")) == 0:
+            return "Gratuit"
+    except ValueError:
+        return str(price).strip()
+    if low is not None and high is not None and str(low) != str(high):
+        return f"{currency} {low}–{high}"
+    return f"{currency} {price}" if price not in (None, "") else ""
+
+
+def _normalize_jsonld(item: dict, page_url: str = "") -> dict | None:
     title = (item.get("name") or "").strip()
     if not title:
         return None
 
     date, time_str = _parse_iso_date(item.get("startDate", ""))
     end_date, _ = _parse_iso_date(item.get("endDate", ""))
-    location, address = _extract_location(item.get("location"))
-    description = (item.get("description") or "").strip()[:400]
+    location_field = item.get("location")
+    if isinstance(location_field, list):
+        location_field = location_field[0] if location_field else None
+    location, address = _extract_location(location_field)
+    description = BeautifulSoup(item.get("description") or "", "lxml").get_text(" ", strip=True)[:400]
+    price = _extract_price(item.get("offers"))
+    if not price and item.get("isAccessibleForFree") in (True, "true", "True"):
+        price = "Gratuit"
 
     return {
         "id": _gen_id(title, date),
@@ -137,14 +169,31 @@ def _normalize_jsonld(item: dict) -> dict | None:
         "subcategory": "",
         "description": description,
         "image": _extract_image(item.get("image")),
-        "price": "",
-        "url": item.get("url", "#"),
+        "price": price,
+        "url": item.get("url") or page_url,
         "tags": [],
         "featured": False,
     }
 
 
-def _extract_jsonld_events(soup: BeautifulSoup) -> list[dict]:
+def _jsonld_items(data) -> Iterable[dict]:
+    """Walk JSON-LD: plain objects, lists and @graph containers."""
+    if isinstance(data, list):
+        for entry in data:
+            yield from _jsonld_items(entry)
+    elif isinstance(data, dict):
+        if "@graph" in data:
+            yield from _jsonld_items(data["@graph"])
+        yield data
+
+
+def _is_event(item: dict) -> bool:
+    kind = item.get("@type")
+    kinds = kind if isinstance(kind, list) else [kind]
+    return any(k in EVENT_TYPES for k in kinds)
+
+
+def _extract_jsonld_events(soup: BeautifulSoup, page_url: str = "") -> list[dict]:
     events: list[dict] = []
     for script in soup.find_all("script", type="application/ld+json"):
         raw = script.string
@@ -154,17 +203,100 @@ def _extract_jsonld_events(soup: BeautifulSoup) -> list[dict]:
             data = json.loads(raw)
         except json.JSONDecodeError:
             continue
-
-        items = data if isinstance(data, list) else [data]
-        for item in items:
-            if not isinstance(item, dict):
+        for item in _jsonld_items(data):
+            if not _is_event(item):
                 continue
-            if item.get("@type") not in EVENT_TYPES:
-                continue
-            normalized = _normalize_jsonld(item)
+            normalized = _normalize_jsonld(item, page_url)
             if normalized:
                 events.append(normalized)
     return events
+
+
+def _unfold_ics(text: str) -> list[str]:
+    lines: list[str] = []
+    for raw in text.splitlines():
+        if raw[:1] in (" ", "\t") and lines:
+            lines[-1] += raw[1:]
+        else:
+            lines.append(raw)
+    return lines
+
+
+def _ics_value(value: str) -> str:
+    return (value.replace("\\n", " ").replace("\\N", " ").replace("\\,", ",")
+            .replace("\\;", ";").replace("\\\\", "\\").strip())
+
+
+def _ics_date(key: str, value: str) -> tuple[str, str]:
+    """DTSTART / DTEND: date-only, local, or UTC (Z) values."""
+    value = value.strip()
+    if "VALUE=DATE" in key and len(value) == 8:
+        return f"{value[:4]}-{value[4:6]}-{value[6:]}", ""
+    m = re.match(r"(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})\d{0,2}(Z?))?$", value)
+    if not m:
+        return "", ""
+    y, mo, d, hh, mm, utc = m.groups()
+    if hh is None:
+        return f"{y}-{mo}-{d}", ""
+    iso = f"{y}-{mo}-{d}T{hh}:{mm}:00" + ("+00:00" if utc else "")
+    return _parse_iso_date(iso)
+
+
+def parse_ics(text: str, page_url: str = "") -> list[dict]:
+    """Read VEVENT entries from an iCalendar feed."""
+    events: list[dict] = []
+    current: dict[str, str] | None = None
+    for line in _unfold_ics(text):
+        if line == "BEGIN:VEVENT":
+            current = {}
+        elif line == "END:VEVENT" and current is not None:
+            title = _ics_value(current.get("SUMMARY", ""))
+            date, time_str = current.get("_start", ("", ""))
+            end_date, _ = current.get("_end", ("", ""))
+            if title:
+                description = _ics_value(current.get("DESCRIPTION", ""))[:400]
+                location = _ics_value(current.get("LOCATION", ""))
+                venue, _, address = location.partition(",")
+                events.append({
+                    "id": _gen_id(title, date), "title": title, "date": date,
+                    "time": time_str, "end_date": end_date if end_date != date else "",
+                    "location": venue.strip(), "address": address.strip(),
+                    "category": categorize(title, description), "subcategory": "",
+                    "description": description, "image": "", "price": "",
+                    "url": current.get("URL", "").strip() or page_url,
+                    "tags": [], "featured": False,
+                })
+            current = None
+        elif current is not None and ":" in line:
+            key, _, value = line.partition(":")
+            name = key.split(";")[0].upper()
+            if name == "DTSTART":
+                current["_start"] = _ics_date(key, value)
+            elif name == "DTEND":
+                current["_end"] = _ics_date(key, value)
+            else:
+                current[name] = value
+    return events
+
+
+def _detail_links(soup: BeautifulSoup, page_url: str, pattern: str) -> list[str]:
+    """Event-page links on an aggregator listing page, in page order."""
+    rule = re.compile(pattern)
+    host = urlparse(page_url).netloc
+    links: list[str] = []
+    for a in soup.find_all("a", href=True):
+        url = urljoin(page_url, a["href"]).split("#")[0]
+        if urlparse(url).netloc == host and rule.search(urlparse(url).path) and url not in links:
+            links.append(url)
+    return links
+
+
+def _detail_pattern(url: str) -> str | None:
+    host = urlparse(url).netloc.lower()
+    for domain, pattern in config.DETAIL_LINK_PATTERNS:
+        if host == domain or host.endswith("." + domain):
+            return pattern
+    return None
 
 
 def _extract_html_events(soup: BeautifulSoup, base_url: str) -> list[dict]:
@@ -200,13 +332,11 @@ def _parse_card(card: Tag, base_url: str) -> dict | None:
     image = ""
     if img_tag:
         image = img_tag.get("src", "") or img_tag.get("data-src", "")
-        if image.startswith("/"):
-            image = base_url.rstrip("/") + image
+        if image:
+            image = urljoin(base_url, image)
 
     link_tag = card.find("a", href=True)
-    url = link_tag["href"] if link_tag else "#"
-    if url.startswith("/"):
-        url = base_url.rstrip("/") + url
+    url = urljoin(base_url, link_tag["href"]) if link_tag else ""
 
     return {
         "id": _gen_id(title, date),
@@ -227,7 +357,11 @@ def _parse_card(card: Tag, base_url: str) -> dict | None:
     }
 
 
-def _fetch(url: str) -> str | None:
+class FetchError(Exception):
+    pass
+
+
+def _fetch(url: str) -> str:
     headers = {
         "User-Agent": config.SCRAPE_USER_AGENT,
         "Accept-Language": "fr-CH,fr;q=0.9,en;q=0.5",
@@ -237,9 +371,33 @@ def _fetch(url: str) -> str | None:
         resp.raise_for_status()
         return resp.text
     except requests.RequestException as exc:
-        logger.warning("Fetch failed for %s: %s", url, exc)
-        db.log_scrape("scraper", url, "error", 0, str(exc))
-        return None
+        raise FetchError(str(exc)) from exc
+
+
+def scrape_one(url: str) -> tuple[list[dict], str]:
+    """Collect one source. Returns (events, method used). Raises FetchError."""
+    text = _fetch(url)
+    if text.lstrip().startswith("BEGIN:VCALENDAR"):
+        return parse_ics(text, url), "ical"
+
+    soup = BeautifulSoup(text, "lxml")
+    found = _extract_jsonld_events(soup, url)
+    if found:
+        return found, "json-ld"
+
+    pattern = _detail_pattern(url)
+    if pattern:
+        links = _detail_links(soup, url, pattern)[: config.MAX_DETAIL_PAGES]
+        for link in links:
+            try:
+                page = BeautifulSoup(_fetch(link), "lxml")
+            except FetchError as exc:
+                logger.warning("Detail page failed %s: %s", link, exc)
+                continue
+            found.extend(_extract_jsonld_events(page, link))
+        return found, f"pages-detail ({len(links)} liens)"
+
+    return _extract_html_events(soup, base_url=url), "html"
 
 
 def scrape_sources(sources: Iterable[str] | None = None) -> list[dict]:
@@ -248,20 +406,19 @@ def scrape_sources(sources: Iterable[str] | None = None) -> list[dict]:
     aggregated: dict[str, dict] = {}
 
     for url in sources:
-        html = _fetch(url)
-        if not html:
+        try:
+            found, method = scrape_one(url)
+        except FetchError as exc:
+            logger.warning("Fetch failed for %s: %s", url, exc)
+            db.log_scrape("scraper", url, "error", 0, str(exc)[:300])
             continue
-
-        soup = BeautifulSoup(html, "lxml")
-        found = _extract_jsonld_events(soup)
-        if not found:
-            found = _extract_html_events(soup, base_url=url)
 
         for evt in found:
             aggregated[evt["id"]] = evt
 
-        db.log_scrape("scraper", url, "ok", len(found))
-        logger.info("Scraped %d events from %s", len(found), url)
+        status = "ok" if found else "empty"
+        db.log_scrape("scraper", url, status, len(found), method)
+        logger.info("Scraped %d events from %s (%s)", len(found), url, method)
 
     return list(aggregated.values())
 

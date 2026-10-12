@@ -32,7 +32,20 @@ class Config:
         "https://ra.co/events/ch/lausanne",
         "https://shotgun.live/fr/cities/lausanne",
         "https://plateforme10.ch/agenda",
+        # Regroupent aussi des bars et petits lieux (Barberousse, Jumeaux,
+        # Romandie...). Adresses trouvées par recherche, à confirmer avec
+        # /api/sources une fois en ligne.
+        "https://www.lausanne-tourisme.ch/fr/evenement/",
+        "https://www.guidle.com/fr/evenements/lausanne",
     )
+
+    # Listing pages whose events live on their own pages: follow the links
+    # whose path matches the pattern and read each page's JSON-LD.
+    DETAIL_LINK_PATTERNS: tuple[tuple[str, str], ...] = (
+        ("lausanne-tourisme.ch", r"^/fr/evenement/[a-z0-9-]+/?$"),
+        ("guidle.com", r"^/fr/evenements/[^/]+_[A-Za-z0-9]+/?$"),
+    )
+    MAX_DETAIL_PAGES: int = int(os.environ.get("MAX_DETAIL_PAGES", "40"))
 
     # ----- Tier 2: venue-specific (alternative & niche scenes) -----
     SCRAPE_VENUES: tuple[str, ...] = (

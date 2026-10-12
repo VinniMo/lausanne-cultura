@@ -163,12 +163,26 @@ def log_scrape(source: str, url: str, status: str, count: int, message: str = ""
         )
 
 
-def last_scrape_time() -> float:
+def last_scrape_time(successful_only: bool = False) -> float:
+    """Time of the last collection attempt (or last successful one)."""
+    sql = "SELECT MAX(timestamp) AS ts FROM scrape_log"
+    if successful_only:
+        sql += " WHERE status = 'ok'"
     with get_conn() as conn:
-        row = conn.execute(
-            "SELECT MAX(timestamp) AS ts FROM scrape_log WHERE status = 'ok'"
-        ).fetchone()
+        row = conn.execute(sql).fetchone()
     return row["ts"] or 0.0
+
+
+def source_status() -> list[dict]:
+    """Latest collection result for each source URL."""
+    with get_conn() as conn:
+        rows = conn.execute("""
+            SELECT l.url, l.status, l.count, l.message, l.timestamp
+            FROM scrape_log l
+            JOIN (SELECT url, MAX(id) AS id FROM scrape_log GROUP BY url) last
+              ON last.id = l.id
+        """).fetchall()
+    return [dict(r) for r in rows]
 
 
 def clear_events() -> None:
