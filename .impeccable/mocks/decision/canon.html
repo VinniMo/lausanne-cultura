@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=390">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:390px;height:844px;overflow:hidden;background:#fff;color:#111827;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;position:relative}
+.top{display:flex;justify-content:space-between;align-items:center;padding:14px 16px}
+.logo{font-weight:700;font-size:18px}
+.logo span{color:#2563eb}
+.search{margin:0 16px;display:flex;gap:8px;align-items:center;background:#f3f4f6;border-radius:12px;padding:12px 14px;color:#6b7280;font-size:15px}
+.tabs{display:flex;gap:22px;padding:16px 16px 0;border-bottom:1px solid #e5e7eb}
+.tab{font-size:15px;font-weight:600;color:#6b7280;padding-bottom:10px}
+.tab.on{color:#111827;border-bottom:2px solid #2563eb}
+.chips{display:flex;gap:8px;padding:12px 16px;overflow:hidden;white-space:nowrap}
+.c{font-size:14px;padding:7px 12px;border-radius:999px;background:#f3f4f6;color:#374151}
+.c.on{background:#2563eb;color:#fff}
+h2{font-size:20px;font-weight:700;padding:6px 16px 10px}
+.card{margin:0 16px 16px;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb}
+.img{height:150px;display:flex;align-items:flex-end;padding:10px;font-size:12px;color:#fff}
+.body{padding:12px 14px}
+.d{font-size:13px;font-weight:600;color:#2563eb}
+.t{font-size:17px;font-weight:700;margin-top:3px}
+.v{font-size:14px;color:#6b7280;margin-top:3px}
+.note{position:absolute;bottom:6px;right:10px;font-size:10px;color:#6b7280;background:#fff;padding:2px 4px}
+</style>
+</head>
+<body>
+<header class="top"><span class="logo">Lausanne <span>Cultura</span></span><span style="font-size:22px">☰</span></header>
+<div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>Rechercher un événement, un lieu</div>
+<nav class="tabs"><span class="tab on">Aujourd'hui</span><span class="tab">Demain</span><span class="tab">Ce week-end</span></nav>
+<div class="chips"><span class="c on">Pour moi</span><span class="c">Tout</span><span class="c">Gratuit</span><span class="c">Musique</span><span class="c">Cinéma</span><span class="c">Clubbing</span></div>
+<h2>Ce soir</h2>
+<article class="card">
+  <div class="img" style="background:linear-gradient(135deg,#8b5cf6,#ec4899)">photo de l'événement</div>
+  <div class="body"><p class="d">Ven. 16 oct. · 19:00 · Gratuit</p><p class="t">Jam session ouverte</p><p class="v">Le Bourg, Lausanne</p></div>
+</article>
+<article class="card">
+  <div class="img" style="background:linear-gradient(135deg,#0ea5e9,#14b8a6)">photo de l'événement</div>
+  <div class="body"><p class="d">Ven. 16 oct. · 20:30 · CHF 12</p><p class="t">Courts métrages suisses</p><p class="v">Zinéma, Lausanne</p></div>
+</article>
+<p class="note">Contenu d'exemple fictif</p>
+</body>
+</html>

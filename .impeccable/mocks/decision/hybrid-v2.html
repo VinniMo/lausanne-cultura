@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=390">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Public+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--wall:#e4e1da;--paper:#fdfcfa;--ink:#111;--fluo:#ff2e88;--yellow:#ffe500;--muted:#5b5a57}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:390px;height:844px;overflow:hidden;background:var(--wall);color:var(--ink);font-family:'Public Sans',system-ui,sans-serif;position:relative}
+.top{display:flex;justify-content:space-between;align-items:center;padding:13px 16px;background:var(--ink);color:#fff}
+.logo{font-family:Anton;font-size:21px;letter-spacing:.02em;text-transform:uppercase}
+.logo span{color:var(--fluo)}
+.menu{font-size:13px;font-weight:800;border:1.5px solid #fff;border-radius:999px;padding:5px 10px}
+.search{margin:12px 16px 0;display:flex;gap:8px;align-items:center;background:var(--paper);border:2px solid var(--ink);padding:10px 12px;font-size:15px;color:var(--muted)}
+.tabs{display:flex;gap:20px;padding:14px 16px 0;border-bottom:2px solid var(--ink)}
+.tab{font-size:15px;font-weight:800;color:var(--muted);padding-bottom:9px}
+.tab.on{color:var(--ink);box-shadow:inset 0 -5px 0 var(--fluo)}
+.chips{display:flex;gap:7px;padding:11px 16px;white-space:nowrap;overflow:hidden}
+.c{font-size:13px;font-weight:600;padding:6px 11px;border:1.5px solid var(--ink);border-radius:999px;background:var(--paper)}
+.c.on{background:var(--yellow);font-weight:800}
+.sec{display:flex;justify-content:space-between;align-items:baseline;padding:6px 16px 10px}
+.sec h2{font-family:Anton;font-size:22px;line-height:1;text-transform:uppercase;letter-spacing:.02em}
+.sec p{font-size:13px;font-weight:600;color:var(--muted)}
+.card{margin:0 16px 14px;background:var(--paper);border:2px solid var(--ink)}
+.media{height:96px;position:relative;overflow:hidden;border-bottom:2px solid var(--ink)}
+.photo{position:absolute;inset:0;background:linear-gradient(160deg,#6b5a4e,#2c2a33);display:flex;align-items:flex-end;padding:8px 10px;color:rgba(255,255,255,.75);font-size:11px}
+.sticker{position:absolute;top:8px;left:8px;background:var(--yellow);font-family:Anton;font-size:16px;line-height:1;padding:4px 7px 3px;letter-spacing:.03em;transform:rotate(-2deg)}
+.poster{position:absolute;inset:0;background:var(--fluo);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.poster .h{font-family:Anton;font-size:34px;line-height:1}
+.poster .h small{font-size:20px;vertical-align:top}
+.poster .w{font-family:Anton;font-size:16px;letter-spacing:.04em;text-transform:uppercase;text-align:right}
+.body{display:grid;grid-template-columns:1fr 38px;gap:8px;padding:10px 12px 12px}
+.meta{font-size:13px;font-weight:800}
+.meta .free{background:var(--yellow);padding:0 4px}
+.t{font-size:17px;font-weight:800;margin-top:2px;line-height:1.2}
+.v{font-size:13px;color:var(--muted);margin-top:2px}
+.share{width:38px;height:38px;border:2px solid var(--ink);border-radius:50%;display:flex;align-items:center;justify-content:center;align-self:center}
+.note{position:absolute;bottom:6px;right:10px;font-size:10px;color:var(--muted);background:var(--wall);padding:2px 4px}
+</style>
+</head>
+<body>
+<header class="top"><span class="logo">Lausanne <span>Cultura</span></span><span class="menu">Mes goûts</span></header>
+<div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>Un événement, un lieu…</div>
+<nav class="tabs"><span class="tab on">Ce soir</span><span class="tab">Demain</span><span class="tab">Week-end</span><span class="tab">Plus tard</span></nav>
+<div class="chips"><span class="c on">Pour moi</span><span class="c">Gratuit / petit prix</span><span class="c">Musique</span><span class="c">Cinéma</span><span class="c">Clubbing</span></div>
+<div class="sec"><h2>Ce soir</h2><p>14 plans · 3 masqués</p></div>
+<article class="card">
+  <div class="media"><div class="photo">photo de l'événement</div><span class="sticker">19H</span></div>
+  <div class="body"><div><p class="meta">Ven. 16 oct. · 19:00 · <span class="free">GRATUIT</span></p><p class="t">Jam session ouverte</p><p class="v">Le Bourg · petit lieu</p></div>
+  <span class="share"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 8l5-5 5 5M5 14v6h14v-6"/></svg></span></div>
+</article>
+<article class="card">
+  <div class="media"><div class="poster"><span class="h">20H<small>30</small></span><span class="w">Zinéma</span></div></div>
+  <div class="body"><div><p class="meta">Ven. 16 oct. · 20:30 · CHF 12</p><p class="t">Courts métrages suisses</p><p class="v">Zinéma · cinéma · pas de photo</p></div>
+  <span class="share"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 8l5-5 5 5M5 14v6h14v-6"/></svg></span></div>
+</article>
+<article class="card">
+  <div class="media"><div class="photo" style="background:linear-gradient(160deg,#3e4a5c,#1d1f29)">photo de l'événement</div><span class="sticker">21H</span></div>
+  <div class="body"><div><p class="meta">Ven. 16 oct. · 21:00 · CHF 18</p><p class="t">Les Sœurs Ferraille</p><p class="v">Le Romandie · salle</p></div>
+  <span class="share"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 8l5-5 5 5M5 14v6h14v-6"/></svg></span></div>
+</article>
+<p class="note">Contenu d'exemple fictif</p>
+</body>
+</html>
