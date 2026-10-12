@@ -96,23 +96,28 @@ Audit lancé le 12 octobre 2026 depuis GitHub Actions
 
 | Ce qui se passe | Sources | Nb | Que faire |
 |---|---|---:|---|
-| La page n'existe pas (erreur 404) | lausanne.ch (page agenda), lesdocks.ch, chorus.ch, dclub.ch, cinematheque.ch, zinema.ch | 6 | Trouver la vraie page agenda. |
+| La page n'existe pas (erreur 404) | lausanne.ch (page agenda), vidy.ch, lesdocks.ch, chorus.ch, dclub.ch, cinematheque.ch, zinema.ch | 7 | Trouver la vraie page agenda. |
 | Le domaine n'existe pas | agenda.lausanne.ch, casinodemontbenon.ch, folklore-club.ch | 3 | Vérifier si le lieu existe encore et sous quelle adresse. |
-| Le site refuse les robots (403, 429, connexion coupée) | ra.co, shotgun.live, leromandie.ch, fondation-hermitage.ch, vidy.ch | 5 | Ne pas forcer. Demander au lieu, ou passer par l'espace lieux. |
+| Le site refuse les robots (403, 429) | ra.co, shotgun.live, leromandie.ch, fondation-hermitage.ch | 4 | Ne pas forcer. Demander au lieu, ou passer par l'espace lieux. |
 | Certificat de sécurité refusé | le-bourg.ch | 1 | À examiner. |
 | Répond, mais aucun événement reconnu | lausanne-tourisme.ch (40 pages suivies, aucune lisible), guidle.com, plateforme10.ch, tkm.ch, theatredebeaulieu.ch, opera-lausanne.ch, mcba.ch, elysee.ch, mudac.ch, cinemabellevaux.ch | 10 | Un module dédié par source. |
-| Répond, mais fiches sans aucune date | mad.ch (80), ocl.ch (50), theatre-octogone.ch (20), arsenic.ch (1) | 4 | Un module dédié ; ne plus enregistrer de fiche sans date. |
+| Trouve les titres, mais pas les dates | mad.ch (80), ocl.ch (50), theatre-octogone.ch (20), arsenic.ch (1) | 4 | Un module dédié qui lit la date. Les réparations les plus rapides. |
 
 Ce que ça veut dire :
 
-- **Neuf adresses sur 29 n'existent pas.** La liste de `config.py` n'a pas
+- **Dix adresses sur 29 n'existent pas.** La liste de `config.py` n'a pas
   été vérifiée quand elle a été écrite.
+- **Bonne nouvelle pour quatre sources :** les titres trouvés sont de vrais
+  événements (MAD : « Gameboy the mad gay party », « JETLAG » ; Octogone :
+  « La Machine de Turing », « Land of Hope » ; Arsenic : « Grand
+  Magasin »). Il ne manque que la date. Chez OCL, une partie des titres
+  sont des liens du menu (« Opéra de Lausanne ») mélangés aux concerts.
 - **La méthode générique ne suffit pas.** Les sites qui répondent ne
   publient pas leurs événements dans un format standard lisible ; chacun
   demande un petit module sur mesure.
-- **Conséquence probable en ligne (à vérifier en ouvrant le site) :** soit
-  les événements de démonstration, soit les ~150 fiches sans date de MAD,
-  OCL, Octogone et Arsenic, rangées dans « Plus tard ».
+- **Conséquence probable en ligne (à vérifier en ouvrant le site) :** rien
+  ce soir ni ce week-end ; seulement les ~150 fiches sans date de MAD, OCL,
+  Octogone et Arsenic, rangées dans « Plus tard ».
 - Réserve : l'audit tourne depuis les serveurs de GitHub. Render est aussi
   un centre de données, le résultat devrait être proche, mais `/api/sources`
   sur le site en ligne le confirmera.
@@ -158,15 +163,17 @@ quand… ».
 
 1. **Ne plus enregistrer de fiche sans date.** Une fiche sans date n'aide
    pas à choisir une sortie (principe « honnêteté des données »).
-2. **Corriger les neuf adresses** qui n'existent pas : trouver la vraie page
+2. **Corriger les dix adresses** qui n'existent pas : trouver la vraie page
    agenda de chaque lieu, retirer ceux qui ont fermé.
 3. **Un module dédié pour 5 à 8 sources prioritaires**, chacun testé sur une
    copie enregistrée de la page : si le site change, le test le signale.
-   Proposition de première vague, pour le public cible et le volume :
-   Lausanne Tourisme et Guidle (agendas larges, qui couvrent aussi des
-   bars), MAD (club), Plateforme 10 (trois musées), puis Les Docks et
-   D! Club une fois leurs adresses corrigées.
-4. **Les cinq sites qui bloquent les robots :** ne pas contourner leurs
+   Proposition de première vague :
+   - MAD, Octogone, Arsenic : les titres sont déjà trouvés, il ne manque
+     que la date. Réparations les plus rapides, et MAD vise le public cible.
+   - Lausanne Tourisme et Guidle : agendas larges, qui couvrent aussi des
+     bars.
+   - Puis Les Docks, D! Club et Vidy, une fois leurs adresses corrigées.
+4. **Les quatre sites qui bloquent les robots :** ne pas contourner leurs
    protections (risque juridique, et c'est mal vu des lieux qu'on veut
    ensuite convaincre). Les mettre sur la liste de la piste terrain.
 5. L'audit sert de contrôle : chaque pull request qui touche la collecte le
