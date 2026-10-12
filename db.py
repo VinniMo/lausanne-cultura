@@ -111,26 +111,40 @@ def row_to_dict(row: sqlite3.Row) -> dict:
     return d
 
 
-def list_events(category: str = "", search: str = "") -> list[dict]:
-    sql = "SELECT * FROM events WHERE 1=1"
-    params: list = []
-    if category:
-        sql += " AND LOWER(category) = LOWER(?)"
-        params.append(category)
-    if search:
-        like = f"%{search.lower()}%"
-        sql += " AND (LOWER(title) LIKE ? OR LOWER(description) LIKE ? OR LOWER(location) LIKE ? OR LOWER(tags) LIKE ?)"
-        params.extend([like, like, like, like])
-    sql += " ORDER BY featured DESC, date ASC, title ASC"
+def count_events(source: str | None = None, exclude_source: str | None = None) -> int:
+    sql, params = "SELECT COUNT(*) AS n FROM events WHERE 1=1", []
+    if source:
+        sql += " AND source = ?"
+        params.append(source)
+    if exclude_source:
+        sql += " AND source != ?"
+        params.append(exclude_source)
+    with get_conn() as conn:
+        return conn.execute(sql, params).fetchone()["n"]
 
+
+def list_all_events(exclude_source: str | None = None) -> list[dict]:
+    sql, params = "SELECT * FROM events", []
+    if exclude_source:
+        sql += " WHERE source != ?"
+        params.append(exclude_source)
     with get_conn() as conn:
         rows = conn.execute(sql, params).fetchall()
     return [row_to_dict(r) for r in rows]
 
 
-def count_events() -> int:
+def oldest_update(source: str) -> float:
+    """When rows from this source were last written (0 when there are none)."""
     with get_conn() as conn:
-        return conn.execute("SELECT COUNT(*) AS n FROM events").fetchone()["n"]
+        row = conn.execute(
+            "SELECT MIN(updated_at) AS ts FROM events WHERE source = ?", (source,)
+        ).fetchone()
+    return row["ts"] or 0.0
+
+
+def delete_source(source: str) -> None:
+    with get_conn() as conn:
+        conn.execute("DELETE FROM events WHERE source = ?", (source,))
 
 
 def list_categories() -> list[dict]:

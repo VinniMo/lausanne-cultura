@@ -15,6 +15,7 @@ import json
 import logging
 import re
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from typing import Iterable
 
 import requests
@@ -24,6 +25,8 @@ from config import config
 import db
 
 logger = logging.getLogger(__name__)
+
+LOCAL_TZ = ZoneInfo("Europe/Zurich")
 
 EVENT_TYPES = {
     "Event", "MusicEvent", "TheaterEvent", "DanceEvent",
@@ -75,9 +78,13 @@ def _parse_iso_date(value: str) -> tuple[str, str]:
         return "", ""
     try:
         dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
-        return dt.strftime("%Y-%m-%d"), dt.strftime("%H:%M")
     except ValueError:
         return value[:10], ""
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(LOCAL_TZ)
+    # A bare date ("2026-10-16") carries no time: do not show "00:00".
+    has_time = "T" in value or " " in value.strip()
+    return dt.strftime("%Y-%m-%d"), dt.strftime("%H:%M") if has_time else ""
 
 
 def _extract_image(image_field) -> str:
@@ -99,13 +106,13 @@ def _extract_location(location_field) -> tuple[str, str]:
             parts = [
                 address.get("streetAddress", ""),
                 address.get("postalCode", ""),
-                address.get("addressLocality", "Lausanne"),
+                address.get("addressLocality", ""),
             ]
             address = ", ".join(p for p in parts if p)
-        return name, address or "Lausanne"
+        return name, address
     if isinstance(location_field, str):
-        return location_field, "Lausanne"
-    return "Lausanne", "Lausanne"
+        return location_field, ""
+    return "", ""
 
 
 def _normalize_jsonld(item: dict) -> dict | None:
@@ -130,7 +137,7 @@ def _normalize_jsonld(item: dict) -> dict | None:
         "subcategory": "",
         "description": description,
         "image": _extract_image(item.get("image")),
-        "price": "Voir détails",
+        "price": "",
         "url": item.get("url", "#"),
         "tags": [],
         "featured": False,
@@ -207,13 +214,13 @@ def _parse_card(card: Tag, base_url: str) -> dict | None:
         "date": date,
         "time": "",
         "end_date": "",
-        "location": "Lausanne",
-        "address": "Lausanne",
+        "location": "",
+        "address": "",
         "category": categorize(title, description),
         "subcategory": "",
         "description": description,
         "image": image,
-        "price": "Voir détails",
+        "price": "",
         "url": url,
         "tags": [],
         "featured": False,
