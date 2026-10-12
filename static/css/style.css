@@ -1,6 +1,21 @@
 /* Lausanne Cultura : programme du moment.
    Fond clair, encre noire, barre noire, rose et jaune en étiquettes. */
 
+@font-face {
+    font-family: 'Archivo';
+    src: url('../fonts/archivo-latin.woff2') format('woff2');
+    font-weight: 400 800;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Archivo';
+    src: url('../fonts/archivo-italic-latin.woff2') format('woff2');
+    font-weight: 400;
+    font-style: italic;
+    font-display: swap;
+}
+
 :root {
     --ground: #f6f4ef;
     --paper: #ffffff;
@@ -235,6 +250,7 @@ ul { list-style: none; }
     gap: 10px; padding: 6px var(--gutter) 6px;
 }
 .tile {
+    width: 100%; height: 100%;
     display: flex; flex-direction: column; text-align: left;
     background: var(--paper); border: 1.5px solid var(--ink); min-width: 0;
 }
@@ -250,9 +266,9 @@ ul { list-style: none; }
 }
 .media.type {
     background: var(--paper); display: flex; flex-direction: column;
-    justify-content: space-between; padding: 8px 10px;
+    justify-content: flex-end; padding: 8px 10px 10px;
 }
-.media.type .k { display: block; font-size: 12px; font-weight: 700; color: var(--rose-ink); }
+.media.type .k { display: block; font-size: 12px; font-weight: 700; color: var(--rose-ink); margin-top: 3px; }
 .media.type .k::first-letter { text-transform: uppercase; }
 .media.type .vn { font-weight: 800; font-size: 18px; line-height: 1.1; letter-spacing: -0.01em; overflow-wrap: anywhere; }
 .tile-body { padding: 7px 9px 9px; display: block; }
@@ -328,7 +344,8 @@ ul { list-style: none; }
 .close-btn:hover { background: var(--paper); }
 
 .sheet-title, .ev-title { font-size: 24px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.15; padding-right: 44px; }
-.ev-title { margin-top: 10px; }
+.ev-title { margin-top: 0; }
+.ev-facts dd .tag { font-size: 13px; }
 .sheet-lede { color: var(--muted); font-size: 14px; margin-top: 4px; }
 .sheet-sub { font-size: 15px; font-weight: 800; margin: 18px 0 8px; }
 

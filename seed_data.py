@@ -24,7 +24,7 @@ DEMO_EVENTS: list[dict] = [
     },
     {
         "id": "evt002",
-        "title": "Hamlet — Théâtre de Vidy",
+        "title": "Hamlet",
         "day": 0, "time": "19:30", "until": None,
         "location": "Théâtre Vidy-Lausanne",
         "address": "Avenue E.-H. Jaques-Dalcroze 5, 1007 Lausanne",
@@ -119,7 +119,7 @@ DEMO_EVENTS: list[dict] = [
     },
     {
         "id": "evt010",
-        "title": "Photo Elysée — Regards sur l'Afrique",
+        "title": "Regards sur l'Afrique",
         "day": -10, "time": "10:00", "until": 45,
         "location": "Photo Elysée",
         "address": "Place de la Gare 17, 1003 Lausanne",
@@ -178,7 +178,7 @@ DEMO_EVENTS: list[dict] = [
     },
     {
         "id": "evt015",
-        "title": "Open Air Cinéma — Plage de Vidy",
+        "title": "Open Air Cinéma",
         "day": 25, "time": "21:30", "until": None,
         "location": "Plage de Vidy",
         "address": "Route de Vidy, 1007 Lausanne",
@@ -213,7 +213,7 @@ DEMO_EVENTS: list[dict] = [
     },
     {
         "id": "evt018",
-        "title": "MCBA — Figures de l'Abstraction",
+        "title": "Figures de l'Abstraction",
         "day": -30, "time": "10:00", "until": 40,
         "location": "Musée Cantonal des Beaux-Arts",
         "address": "Plateforme 10, Place de la Gare 16, 1003 Lausanne",
@@ -237,7 +237,7 @@ DEMO_EVENTS: list[dict] = [
     },
     {
         "id": "evt020",
-        "title": "Pique-nique Musical — Parc de l'Hermitage",
+        "title": "Pique-nique musical",
         "day": 6, "time": "13:00", "until": None,
         "location": "Parc de l'Hermitage",
         "address": "Route du Signal 2, 1010 Lausanne",
@@ -249,7 +249,7 @@ DEMO_EVENTS: list[dict] = [
     },
     {
         "id": "evt021",
-        "title": "Electronic Music Night — D! Club",
+        "title": "Electronic Music Night",
         "day": 0, "time": "23:00", "until": None,
         "location": "D! Club",
         "address": "Place Centrale 22, 1003 Lausanne",
@@ -297,7 +297,7 @@ DEMO_EVENTS: list[dict] = [
     },
     {
         "id": "evt025",
-        "title": "La Traviata — Opéra de Lausanne",
+        "title": "La Traviata",
         "day": 4, "time": "19:30", "until": None,
         "location": "Opéra de Lausanne",
         "address": "Avenue du Théâtre 12, 1005 Lausanne",

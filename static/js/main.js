@@ -196,10 +196,10 @@
     }
 
     function tileItem({ evt, masked }) {
-        const typeLabel = evt.subcategory && evt.subcategory.length <= 22 ? evt.subcategory : evt.rubric;
+        const genre = evt.subcategory && evt.subcategory.length <= 22 ? evt.subcategory : '';
         const typeMedia = () => h('span', { class: 'media type' },
-            h('span', { class: 'k' }, typeLabel),
-            h('span', { class: 'vn' }, venueText(evt)));
+            h('span', { class: 'vn' }, venueText(evt)),
+            genre ? h('span', { class: 'k' }, genre) : null);
         let media;
         if (evt.image) {
             const img = h('img', { src: evt.image, alt: '', loading: 'lazy', decoding: 'async' });
@@ -475,9 +475,9 @@
             : null;
 
         $('#sheet-body').replaceChildren(
-            h('span', { class: `tag ${tagClass(evt.rubric)}` }, evt.rubric),
             h('h2', { class: 'ev-title', id: 'sheet-title' }, evt.title),
             h('dl', { class: 'ev-facts' },
+                h('div', {}, h('dt', {}, 'Rubrique'), h('dd', {}, h('span', { class: `tag ${tagClass(evt.rubric)}` }, evt.rubric))),
                 h('div', {}, h('dt', {}, 'Quand'), h('dd', {}, whenText(evt))),
                 h('div', {}, h('dt', {}, 'Où'), h('dd', {},
                     hasVenue(evt) ? evt.location : h('span', { class: 'nc' }, 'Lieu non communiqué'),
