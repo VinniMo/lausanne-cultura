@@ -1,15 +1,19 @@
-"""Curated fallback dataset of Lausanne cultural events.
+"""Demonstration dataset for Lausanne Cultura.
 
-Used when live scraping yields no results, so the app remains functional
-in offline / sandboxed environments (e.g. CI, Codespaces preview).
+Every event here is fictional. It is used only when live collection returns
+nothing (offline previews, sandboxes, CI) and the interface labels it as
+"Données de démonstration". Dates are stored as offsets from today ("day",
+and "until" for multi-day events) so the programme never goes stale.
 """
 from __future__ import annotations
 
-FALLBACK_EVENTS: list[dict] = [
+from datetime import date, timedelta
+
+DEMO_EVENTS: list[dict] = [
     {
         "id": "evt001",
         "title": "Concert Symphonique — Beethoven & Brahms",
-        "date": "2026-05-02", "time": "20:00", "end_date": "",
+        "day": 3, "time": "20:00", "until": None,
         "location": "Opéra de Lausanne",
         "address": "Avenue du Théâtre 12, 1005 Lausanne",
         "category": "Musique", "subcategory": "Classique",
@@ -20,8 +24,8 @@ FALLBACK_EVENTS: list[dict] = [
     },
     {
         "id": "evt002",
-        "title": "Hamlet — Théâtre de Vidy",
-        "date": "2026-05-04", "time": "19:30", "end_date": "",
+        "title": "Hamlet",
+        "day": 0, "time": "19:30", "until": None,
         "location": "Théâtre Vidy-Lausanne",
         "address": "Avenue E.-H. Jaques-Dalcroze 5, 1007 Lausanne",
         "category": "Théâtre", "subcategory": "Pièce",
@@ -33,7 +37,7 @@ FALLBACK_EVENTS: list[dict] = [
     {
         "id": "evt003",
         "title": "Exposition — Giacometti & ses contemporains",
-        "date": "2026-04-15", "time": "10:00", "end_date": "2026-07-30",
+        "day": -20, "time": "10:00", "until": 60,
         "location": "Fondation de l'Hermitage",
         "address": "Route du Signal 2, 1010 Lausanne",
         "category": "Exposition", "subcategory": "Beaux-Arts",
@@ -45,7 +49,7 @@ FALLBACK_EVENTS: list[dict] = [
     {
         "id": "evt004",
         "title": "Festival du Film de Lausanne",
-        "date": "2026-05-08", "time": "18:00", "end_date": "2026-05-15",
+        "day": -2, "time": "18:00", "until": 5,
         "location": "Cinéma Bourg",
         "address": "Place St-François 3, 1002 Lausanne",
         "category": "Cinéma", "subcategory": "Festival",
@@ -57,7 +61,7 @@ FALLBACK_EVENTS: list[dict] = [
     {
         "id": "evt005",
         "title": "Ballet — Le Lac des Cygnes",
-        "date": "2026-05-10", "time": "20:00", "end_date": "",
+        "day": 5, "time": "20:00", "until": None,
         "location": "Opéra de Lausanne",
         "address": "Avenue du Théâtre 12, 1005 Lausanne",
         "category": "Danse", "subcategory": "Ballet",
@@ -69,7 +73,7 @@ FALLBACK_EVENTS: list[dict] = [
     {
         "id": "evt006",
         "title": "Nuit des Musées Lausanne 2026",
-        "date": "2026-05-16", "time": "18:00", "end_date": "2026-05-17",
+        "day": 12, "time": "18:00", "until": 13,
         "location": "Toute la ville", "address": "Lausanne",
         "category": "Festival", "subcategory": "Culture",
         "description": "Une nuit où tous les musées de Lausanne ouvrent leurs portes gratuitement jusqu'à 2h du matin. 25 lieux, performances live, installations surprises.",
@@ -80,7 +84,7 @@ FALLBACK_EVENTS: list[dict] = [
     {
         "id": "evt007",
         "title": "Jazz Sous Les Étoiles",
-        "date": "2026-05-20", "time": "21:00", "end_date": "",
+        "day": 0, "time": "21:00", "until": None,
         "location": "Casino de Montbenon",
         "address": "Allée Ernest-Ansermet 3, 1003 Lausanne",
         "category": "Musique", "subcategory": "Jazz",
@@ -92,7 +96,7 @@ FALLBACK_EVENTS: list[dict] = [
     {
         "id": "evt008",
         "title": "Les Enfants du Paradis — Jeune Public",
-        "date": "2026-05-22", "time": "15:00", "end_date": "",
+        "day": 6, "time": "15:00", "until": None,
         "location": "Théâtre de Beaulieu",
         "address": "Avenue des Bergières 10, 1004 Lausanne",
         "category": "Famille", "subcategory": "Théâtre jeunesse",
@@ -104,7 +108,7 @@ FALLBACK_EVENTS: list[dict] = [
     {
         "id": "evt009",
         "title": "Conférence — L'IA et la Création Artistique",
-        "date": "2026-05-25", "time": "19:00", "end_date": "",
+        "day": 1, "time": "19:00", "until": None,
         "location": "EPFL — Rolex Learning Center",
         "address": "Route Cantonale, 1015 Lausanne",
         "category": "Conférence", "subcategory": "Technologie",
@@ -115,8 +119,8 @@ FALLBACK_EVENTS: list[dict] = [
     },
     {
         "id": "evt010",
-        "title": "Photo Elysée — Regards sur l'Afrique",
-        "date": "2026-04-20", "time": "10:00", "end_date": "2026-08-15",
+        "title": "Regards sur l'Afrique",
+        "day": -10, "time": "10:00", "until": 45,
         "location": "Photo Elysée",
         "address": "Place de la Gare 17, 1003 Lausanne",
         "category": "Exposition", "subcategory": "Photographie",
@@ -128,7 +132,7 @@ FALLBACK_EVENTS: list[dict] = [
     {
         "id": "evt011",
         "title": "Rock en Scène — Festival",
-        "date": "2026-06-05", "time": "17:00", "end_date": "2026-06-07",
+        "day": 19, "time": "17:00", "until": 21,
         "location": "Parc de Mon-Repos",
         "address": "Avenue Mon-Repos 4, 1005 Lausanne",
         "category": "Musique", "subcategory": "Rock",
@@ -140,7 +144,7 @@ FALLBACK_EVENTS: list[dict] = [
     {
         "id": "evt012",
         "title": "Atelier Céramique Contemporaine",
-        "date": "2026-05-03", "time": "14:00", "end_date": "",
+        "day": 5, "time": "14:00", "until": None,
         "location": "Espace Culturel des Terreaux",
         "address": "Rue des Terreaux 12, 1002 Lausanne",
         "category": "Atelier", "subcategory": "Artisanat",
@@ -152,7 +156,7 @@ FALLBACK_EVENTS: list[dict] = [
     {
         "id": "evt013",
         "title": "Vivaldi — Les Quatre Saisons",
-        "date": "2026-05-12", "time": "20:00", "end_date": "",
+        "day": 1, "time": "20:00", "until": None,
         "location": "Cathédrale de Lausanne",
         "address": "Place de la Cathédrale, 1005 Lausanne",
         "category": "Musique", "subcategory": "Classique",
@@ -164,7 +168,7 @@ FALLBACK_EVENTS: list[dict] = [
     {
         "id": "evt014",
         "title": "Corps en Transit — Danse Contemporaine",
-        "date": "2026-05-28", "time": "20:30", "end_date": "",
+        "day": 2, "time": "20:30", "until": None,
         "location": "L'Octogone", "address": "Prilly-Lausanne",
         "category": "Danse", "subcategory": "Contemporain",
         "description": "La compagnie Alias présente une exploration du corps en mouvement, entre chaos et harmonie.",
@@ -174,8 +178,8 @@ FALLBACK_EVENTS: list[dict] = [
     },
     {
         "id": "evt015",
-        "title": "Open Air Cinéma — Plage de Vidy",
-        "date": "2026-06-15", "time": "21:30", "end_date": "2026-08-30",
+        "title": "Open Air Cinéma",
+        "day": 25, "time": "21:30", "until": None,
         "location": "Plage de Vidy",
         "address": "Route de Vidy, 1007 Lausanne",
         "category": "Cinéma", "subcategory": "Plein Air",
@@ -187,7 +191,7 @@ FALLBACK_EVENTS: list[dict] = [
     {
         "id": "evt016",
         "title": "Lausanne Marathon 2026",
-        "date": "2026-10-25", "time": "09:00", "end_date": "",
+        "day": 13, "time": "09:00", "until": None,
         "location": "Place de la Navigation", "address": "Ouchy, Lausanne",
         "category": "Sport", "subcategory": "Running",
         "description": "Le marathon le plus spectaculaire de Suisse romande longe les rives du Lac Léman. 42.195 km, semi-marathon et 10 km.",
@@ -198,7 +202,7 @@ FALLBACK_EVENTS: list[dict] = [
     {
         "id": "evt017",
         "title": "Lausanne à Table — Festival Gastronomique",
-        "date": "2026-06-20", "time": "11:00", "end_date": "2026-06-22",
+        "day": 9, "time": "11:00", "until": 11,
         "location": "Place de la Riponne",
         "address": "Place de la Riponne, 1005 Lausanne",
         "category": "Festival", "subcategory": "Gastronomie",
@@ -209,8 +213,8 @@ FALLBACK_EVENTS: list[dict] = [
     },
     {
         "id": "evt018",
-        "title": "MCBA — Figures de l'Abstraction",
-        "date": "2026-05-01", "time": "10:00", "end_date": "2026-09-01",
+        "title": "Figures de l'Abstraction",
+        "day": -30, "time": "10:00", "until": 40,
         "location": "Musée Cantonal des Beaux-Arts",
         "address": "Plateforme 10, Place de la Gare 16, 1003 Lausanne",
         "category": "Exposition", "subcategory": "Art moderne",
@@ -222,7 +226,7 @@ FALLBACK_EVENTS: list[dict] = [
     {
         "id": "evt019",
         "title": "Stand-Up Comedy Night",
-        "date": "2026-05-30", "time": "20:00", "end_date": "",
+        "day": 0, "time": "20:00", "until": None,
         "location": "Les Docks",
         "address": "Avenue du Simplon 34, 1006 Lausanne",
         "category": "Humour", "subcategory": "Stand-up",
@@ -233,8 +237,8 @@ FALLBACK_EVENTS: list[dict] = [
     },
     {
         "id": "evt020",
-        "title": "Pique-nique Musical — Parc de l'Hermitage",
-        "date": "2026-06-01", "time": "13:00", "end_date": "",
+        "title": "Pique-nique musical",
+        "day": 6, "time": "13:00", "until": None,
         "location": "Parc de l'Hermitage",
         "address": "Route du Signal 2, 1010 Lausanne",
         "category": "Famille", "subcategory": "Plein Air",
@@ -245,11 +249,11 @@ FALLBACK_EVENTS: list[dict] = [
     },
     {
         "id": "evt021",
-        "title": "Electronic Music Night — D! Club",
-        "date": "2026-05-09", "time": "23:00", "end_date": "",
+        "title": "Electronic Music Night",
+        "day": 0, "time": "23:00", "until": None,
         "location": "D! Club",
         "address": "Place Centrale 22, 1003 Lausanne",
-        "category": "Musique", "subcategory": "Électronique",
+        "category": "Clubbing", "subcategory": "Électronique",
         "description": "Nuit électronique avec Solomun (Croatie) et Mathew Jonson (Canada). Système son d'exception.",
         "image": "https://images.unsplash.com/photo-1493676304819-0d7a8d026dcf?w=800&q=80",
         "price": "CHF 30", "url": "#",
@@ -258,7 +262,7 @@ FALLBACK_EVENTS: list[dict] = [
     {
         "id": "evt022",
         "title": "Lausanne Urban Art Festival",
-        "date": "2026-06-12", "time": "10:00", "end_date": "2026-06-14",
+        "day": 5, "time": "10:00", "until": 6,
         "location": "Flon & Riponne",
         "address": "Quartier du Flon, Lausanne",
         "category": "Festival", "subcategory": "Street Art",
@@ -270,7 +274,7 @@ FALLBACK_EVENTS: list[dict] = [
     {
         "id": "evt023",
         "title": "Ciné-concert — Metropolis de Fritz Lang",
-        "date": "2026-05-17", "time": "20:00", "end_date": "",
+        "day": 1, "time": "20:00", "until": None,
         "location": "Salle Métropole",
         "address": "Rue du Maupas 5, 1004 Lausanne",
         "category": "Cinéma", "subcategory": "Ciné-concert",
@@ -282,7 +286,7 @@ FALLBACK_EVENTS: list[dict] = [
     {
         "id": "evt024",
         "title": "Marché Artisanal de Printemps",
-        "date": "2026-05-03", "time": "10:00", "end_date": "2026-05-04",
+        "day": 5, "time": "10:00", "until": 6,
         "location": "Place de la Palud",
         "address": "Place de la Palud, 1003 Lausanne",
         "category": "Marché", "subcategory": "Artisanat",
@@ -293,8 +297,8 @@ FALLBACK_EVENTS: list[dict] = [
     },
     {
         "id": "evt025",
-        "title": "La Traviata — Opéra de Lausanne",
-        "date": "2026-05-24", "time": "19:30", "end_date": "",
+        "title": "La Traviata",
+        "day": 4, "time": "19:30", "until": None,
         "location": "Opéra de Lausanne",
         "address": "Avenue du Théâtre 12, 1005 Lausanne",
         "category": "Musique", "subcategory": "Opéra",
@@ -303,4 +307,97 @@ FALLBACK_EVENTS: list[dict] = [
         "price": "CHF 30–130", "url": "#",
         "tags": ["opéra", "verdi"], "featured": False,
     },
+    # Small venues: short fictional entries so the demo shows the whole range.
+    {
+        "id": "demo101", "title": "Jam session ouverte",
+        "day": 0, "time": "19:00", "until": None,
+        "location": "Le Bourg", "address": "Rue de Bourg 51, 1003 Lausanne",
+        "category": "Musique", "subcategory": "blues, soul, instruments bienvenus",
+        "description": "Scène ouverte : on apporte son instrument, on s'inscrit au bar.",
+        "image": "", "price": "Gratuit", "url": "#", "tags": ["jam"], "featured": False,
+    },
+    {
+        "id": "demo102", "title": "Plateau rock garage",
+        "day": 0, "time": "21:00", "until": None,
+        "location": "Le Romandie", "address": "Place de l'Europe 1a, 1003 Lausanne",
+        "category": "Musique", "subcategory": "deux groupes, première partie locale",
+        "description": "Deux groupes de rock garage, dont une première partie de la région.",
+        "image": "", "price": "CHF 18", "url": "#", "tags": ["rock"], "featured": False,
+    },
+    {
+        "id": "demo103", "title": "House all night",
+        "day": 0, "time": "23:30", "until": None,
+        "location": "MAD", "address": "Rue de Genève 23, 1003 Lausanne",
+        "category": "Clubbing", "subcategory": "",
+        "description": "Une nuit house avec les DJ résidents.",
+        "image": "", "price": "CHF 20", "url": "#", "tags": ["house"], "featured": False,
+    },
+    {
+        "id": "demo104", "title": "Lecture-performance",
+        "day": 0, "time": "19:30", "until": None,
+        "location": "Arsenic", "address": "Rue de Genève 57, 1004 Lausanne",
+        "category": "Théâtre", "subcategory": "théâtre contemporain",
+        "description": "Une autrice lit et met en jeu un texte en cours d'écriture.",
+        "image": "", "price": "CHF 15", "url": "#", "tags": ["lecture"], "featured": False,
+    },
+    {
+        "id": "demo105", "title": "Scène ouverte stand-up",
+        "day": 1, "time": "21:00", "until": None,
+        "location": "Le Bourg", "address": "Rue de Bourg 51, 1003 Lausanne",
+        "category": "Humour", "subcategory": "",
+        "description": "Dix minutes chacun, inscription sur place.",
+        "image": "", "price": "", "url": "#", "tags": ["stand-up"], "featured": False,
+    },
+    {
+        "id": "demo106", "title": "Courts métrages suisses",
+        "day": 1, "time": "18:30", "until": None,
+        "location": "Zinéma", "address": "Rue du Maupas 4, 1004 Lausanne",
+        "category": "Cinéma", "subcategory": "programme de six courts",
+        "description": "Six courts métrages récents, suivis d'une discussion.",
+        "image": "", "price": "CHF 12", "url": "#", "tags": ["court métrage"], "featured": False,
+    },
+    {
+        "id": "demo107", "title": "Trio jazz",
+        "day": 2, "time": "20:30", "until": None,
+        "location": "Chorus", "address": "Avenue Mon-Repos 3, 1005 Lausanne",
+        "category": "Musique", "subcategory": "piano, contrebasse, batterie",
+        "description": "Un trio de la scène romande joue ses compositions.",
+        "image": "", "price": "", "url": "#", "tags": ["jazz"], "featured": False,
+    },
+    {
+        "id": "demo108", "title": "Rap romand, plateau",
+        "day": 5, "time": "21:00", "until": None,
+        "location": "Les Docks", "address": "Avenue de Sévelin 34, 1004 Lausanne",
+        "category": "Musique", "subcategory": "quatre artistes de la région",
+        "description": "Quatre artistes de la région se partagent la scène.",
+        "image": "", "price": "CHF 25", "url": "#", "tags": ["rap"], "featured": False,
+    },
+    {
+        "id": "demo109", "title": "Nuit techno",
+        "day": 5, "time": "23:00", "until": None,
+        "location": "Folklore", "address": "",
+        "category": "Clubbing", "subcategory": "trois DJ résidents",
+        "description": "Trois DJ résidents jusqu'au matin.",
+        "image": "", "price": "CHF 15", "url": "#", "tags": ["techno"], "featured": False,
+    },
+    {
+        "id": "demo110", "title": "Soirée disco",
+        "day": 6, "time": "22:00", "until": None,
+        "location": "Le Romandie", "address": "Place de l'Europe 1a, 1003 Lausanne",
+        "category": "Clubbing", "subcategory": "",
+        "description": "Disco et funk, vinyles uniquement.",
+        "image": "", "price": "CHF 10", "url": "#", "tags": ["disco"], "featured": False,
+    },
 ]
+
+
+def build_demo_events(today: date) -> list[dict]:
+    """Return the demo events with real dates computed from today."""
+    events = []
+    for item in DEMO_EVENTS:
+        evt = {k: v for k, v in item.items() if k not in ("day", "until")}
+        evt["date"] = (today + timedelta(days=item["day"])).isoformat()
+        until = item.get("until")
+        evt["end_date"] = (today + timedelta(days=until)).isoformat() if until is not None else ""
+        events.append(evt)
+    return events

@@ -3,119 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="theme-color" content="#0c0c10">
-    <meta name="description" content="L'agenda culturel de Lausanne — concerts, expositions, théâtre, festivals.">
-    <title>Lausanne Cultura — l'agenda culturel</title>
+    <meta name="theme-color" content="#151515">
+    <meta name="description" content="Que faire à Lausanne ce soir, demain ou ce week-end : concerts, soirées, scène, cinéma, expos.">
+    <title>Lausanne Cultura · ce soir à Lausanne</title>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preload" href="{{ url_for('static', filename='fonts/archivo-latin.woff2') }}" as="font" type="font/woff2" crossorigin>
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <a href="#main" class="skip-link">Aller au contenu</a>
+    <a href="#programme" class="skip-link">Aller au programme</a>
 
-    <header class="topbar" id="topbar">
-        <div class="topbar-inner">
-            <a href="/" class="brand" aria-label="Lausanne Cultura">
-                <span class="brand-mark">L<span class="brand-dot">·</span>C</span>
-                <span class="brand-name">Lausanne <em>Cultura</em></span>
-            </a>
-            <button class="search-toggle" id="search-toggle" aria-label="Rechercher" aria-expanded="false">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-            </button>
-        </div>
-        <div class="search-bar" id="search-bar" hidden>
-            <input type="search" id="search-input" placeholder="Rechercher un événement, un lieu…" autocomplete="off">
+    <header class="bar">
+        <div class="bar-inner">
+            <a href="/" class="logo">Lausanne <span>Cultura</span></a>
+            <div class="bar-actions">
+                <button type="button" class="icon-btn" id="search-toggle" aria-label="Rechercher" aria-expanded="false" aria-controls="search-row">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                </button>
+                <button type="button" class="pill-btn" id="tastes-open" aria-haspopup="dialog">Mes goûts</button>
+            </div>
         </div>
     </header>
 
-    <main id="main">
-        <section class="hero">
-            <div class="hero-eyebrow">Agenda · Lausanne · {{ "" }}</div>
-            <h1 class="hero-title">
-                Vivez la <em>culture</em>,<br>une nuit à la fois.
-            </h1>
-            <p class="hero-lede">
-                Chaque scène, chaque exposition, chaque concert de la ville —
-                en un coup d'œil.
-            </p>
-            <div class="hero-meta">
-                <span id="event-count">—</span> événements
-                <span class="dot" aria-hidden="true">·</span>
-                <span id="category-count">—</span> thèmes
-            </div>
-        </section>
+    <div class="search-row" id="search-row" hidden>
+        <form class="wrap search-form" id="search-form" role="search">
+            <label for="search-input" class="sr-only">Rechercher un événement, un lieu, un artiste</label>
+            <input type="search" id="search-input" placeholder="Événement, lieu, artiste…" autocomplete="off" enterkeyhint="search">
+            <button type="button" class="text-btn" id="search-close">Fermer</button>
+        </form>
+    </div>
 
-        <section class="featured" aria-labelledby="featured-heading">
-            <div class="section-head">
-                <h2 id="featured-heading" class="section-title">À ne pas manquer</h2>
-                <p class="section-sub">Les rendez-vous majeurs sélectionnés cette saison.</p>
-            </div>
-            <div class="featured-rail" id="featured-rail">
-                <div class="skeleton skeleton-featured"></div>
-                <div class="skeleton skeleton-featured"></div>
-            </div>
-        </section>
+    <main id="programme" class="wrap" tabindex="-1">
+        <h1 class="sr-only">Programme culturel de Lausanne</h1>
 
-        <nav class="filters" id="filters" aria-label="Filtres par thème">
-            <button class="chip active" data-category="">Tout</button>
-        </nav>
+        <div class="tabs-shell" id="tabs-shell">
+            <div class="tabs" role="tablist" aria-label="Quand" id="tabs"></div>
+        </div>
 
-        <div id="themes-container">
-            <div class="skeleton-section">
-                <div class="skeleton skeleton-line"></div>
-                <div class="skeleton-rail">
-                    <div class="skeleton skeleton-card"></div>
-                    <div class="skeleton skeleton-card"></div>
-                    <div class="skeleton skeleton-card"></div>
-                </div>
+        <div class="controls" id="controls">
+            <button type="button" class="chip" id="filter-forme" aria-pressed="false">Pour moi</button>
+            <button type="button" class="chip" id="filter-cheap" aria-pressed="false" aria-describedby="cheap-rule">Gratuit / petit prix</button>
+            <span class="sr-only" id="cheap-rule">Gratuit, ou CHF 15 et moins. Les prix non communiqués sont exclus.</span>
+            <div class="seg" role="group" aria-label="Affichage">
+                <button type="button" data-view="list" aria-pressed="true">Liste</button>
+                <button type="button" data-view="posters" aria-pressed="false">Affiches</button>
             </div>
         </div>
 
-        <section class="empty" id="empty-state" hidden>
-            <p class="empty-glyph">∅</p>
-            <h3>Aucun événement trouvé</h3>
-            <p>Essayez un autre thème ou un mot-clé différent.</p>
+        <p class="demo-note" id="demo-note" hidden>
+            <span class="demo-mark">Démo</span> Données de démonstration, événements fictifs.
+        </p>
+
+        <section class="onboard" id="onboard" hidden aria-labelledby="onboard-title">
+            <h2 id="onboard-title">Qu'est-ce qui vous intéresse ?</h2>
+            <p>Choisissez vos rubriques : « Pour moi » les mettra en avant. Rien n'est envoyé, c'est enregistré sur cet appareil.</p>
+            <div class="choice-list" id="onboard-choices"></div>
+            <div class="onboard-actions">
+                <button type="button" class="btn btn-ink" id="onboard-save">Valider</button>
+                <button type="button" class="text-btn" id="onboard-skip">Pas maintenant</button>
+            </div>
         </section>
+
+        <p class="search-summary" id="search-summary" hidden aria-live="polite"></p>
+
+        <div id="panel" role="tabpanel" tabindex="-1" aria-busy="true"></div>
     </main>
 
-    <footer class="site-foot">
-        <div class="foot-inner">
-            <p class="foot-line">
-                Lausanne · Cultura — agenda culturel scrapé en temps réel
-            </p>
-            <p class="foot-credit">
-                Données <a href="https://agenda.lausanne.ch/" target="_blank" rel="noopener">agenda.lausanne.ch</a>
-                · Conception artisanale
-            </p>
+    <footer class="foot">
+        <div class="wrap">
+            <p id="foot-source">Programme collecté automatiquement sur les sites de lieux et d'agendas lausannois, mis à jour au plus une fois par heure.</p>
+            <p>Horaires et prix peuvent changer : vérifiez auprès de l'organisateur avant de vous déplacer.</p>
         </div>
     </footer>
 
-    <div class="modal" id="modal" hidden aria-modal="true" role="dialog" aria-labelledby="modal-title">
-        <div class="modal-overlay" data-close></div>
-        <article class="modal-card" id="modal-card">
-            <button class="modal-close" data-close aria-label="Fermer">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    <dialog class="sheet" id="event-sheet" aria-labelledby="sheet-title">
+        <div class="sheet-inner">
+            <button type="button" class="close-btn" data-close aria-label="Fermer la fiche">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
             </button>
-            <div class="modal-image" id="modal-image"></div>
-            <div class="modal-body">
-                <span class="modal-cat" id="modal-cat"></span>
-                <h2 id="modal-title"></h2>
-                <dl class="modal-meta">
-                    <div><dt>Date</dt><dd id="modal-date"></dd></div>
-                    <div><dt>Lieu</dt><dd id="modal-location"></dd></div>
-                    <div><dt>Tarif</dt><dd id="modal-price"></dd></div>
-                </dl>
-                <p id="modal-desc"></p>
-                <a class="modal-cta" id="modal-link" href="#" target="_blank" rel="noopener">
-                    Voir le site officiel
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 17 17 7M7 7h10v10"/></svg>
-                </a>
+            <div id="sheet-body"></div>
+        </div>
+    </dialog>
+
+    <dialog class="sheet" id="tastes-sheet" aria-labelledby="tastes-title">
+        <div class="sheet-inner">
+            <button type="button" class="close-btn" data-close aria-label="Fermer Mes goûts">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+            <h2 id="tastes-title" class="sheet-title">Mes goûts</h2>
+            <p class="sheet-lede">Enregistré sur cet appareil, sans compte.</p>
+            <h3 class="sheet-sub">Ce qui m'intéresse</h3>
+            <div class="choice-list" id="tastes-choices"></div>
+            <h3 class="sheet-sub">Lieux masqués</h3>
+            <ul class="venue-list" id="tastes-venues"></ul>
+            <div class="sheet-actions">
+                <button type="button" class="btn btn-ink" id="tastes-save">Enregistrer</button>
             </div>
-        </article>
-    </div>
+        </div>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>

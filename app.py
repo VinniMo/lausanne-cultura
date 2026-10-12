@@ -5,15 +5,16 @@ import logging
 import os
 import secrets
 import time
-from functools import wraps
+from datetime import datetime
 
 from flask import Flask, Response, jsonify, render_template, request
 from flask_cors import CORS
 
+import agenda
 import db
 import scraper
 from config import config
-from seed_data import FALLBACK_EVENTS
+from seed_data import build_demo_events
 
 logging.basicConfig(
     level=logging.INFO,
@@ -22,12 +23,31 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+DEMO_SOURCE = "seed"
+
+
+def ensure_demo_events() -> None:
+    """Keep the fictional demo programme dated from today.
+
+    Demo events are only written when no collected event exists, and are
+    rewritten once a day so the page never shows a stale, all-past demo.
+    """
+    if db.count_events(exclude_source=DEMO_SOURCE) > 0:
+        return
+    today = agenda.today_local()
+    written = db.oldest_update(DEMO_SOURCE)
+    if written and agenda.today_local(datetime.fromtimestamp(written, agenda.TZ)) == today:
+        return
+    db.delete_source(DEMO_SOURCE)
+    events = build_demo_events(today)
+    db.bulk_upsert(events, source=DEMO_SOURCE)
+    logger.info("Wrote %d demo events dated from %s", len(events), today)
+
+
 def bootstrap_database() -> None:
-    """Initialize schema and ensure the DB has at least the fallback dataset."""
+    """Initialize schema and make sure there is something to show."""
     db.init_db()
-    if db.count_events() == 0:
-        db.bulk_upsert(FALLBACK_EVENTS, source="seed")
-        logger.info("Seeded database with %d fallback events", len(FALLBACK_EVENTS))
+    ensure_demo_events()
 
 
 def maybe_refresh_from_scraper() -> None:
@@ -87,13 +107,28 @@ def create_app() -> Flask:
     @app.route("/api/events")
     def api_events():
         maybe_refresh_from_scraper()
-        category = request.args.get("category", "").strip()
+        ensure_demo_events()
         search = request.args.get("search", "").strip()
-        events = db.list_events(category=category, search=search)
+
+        # Collected events win; demo events only show when nothing was collected.
+        events = db.list_all_events(exclude_source=DEMO_SOURCE)
+        demo = not events
+        if demo:
+            events = db.list_all_events()
+        if search:
+            events = [e for e in events if agenda.matches(e, search)]
+
+        programme = agenda.build_programme(events, agenda.today_local())
+        last = db.last_scrape_time()
         return jsonify({
-            "events": events,
-            "total": len(events),
-            "categories": list(config.CATEGORIES),
+            **programme,
+            "search": search,
+            "total": len(programme["events"]),
+            "demo": demo,
+            "rubrics": list(agenda.RUBRIC_ORDER),
+            "small_price_chf": agenda.SMALL_PRICE_CHF,
+            "last_update": datetime.fromtimestamp(last, agenda.TZ).isoformat() if last else None,
+            "source_count": len(config.SCRAPE_SOURCES),
         })
 
     @app.route("/api/categories")
