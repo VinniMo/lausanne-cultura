@@ -50,17 +50,41 @@ une minute.
 - Le réveil d'une minute contredit le principe « décider vite » de
   `PRODUCT.md`.
 
-Deux options :
+### Décision du 12 octobre 2026 : rester gratuit
 
-| | A. Render payant + disque | B. Render gratuit + base externe gratuite |
+L'option payante (Render Starter avec disque, ~USD 7.25/mois) a été écartée.
+La base quitte Render et chaque service fait une seule chose :
+
+| Rôle | Service | Offre gratuite (lue en octobre 2026, à revérifier) |
 |---|---|---|
-| Coût | ~USD 7.25/mois (instance Starter USD 7 + disque 1 Go USD 0.25). Frais d'espace de travail Hobby probablement nuls, **à confirmer** sur render.com/pricing. | 0 |
-| Changement de code | Minime : on garde SQLite, on pointe `LAUSANNE_DB` vers le disque. | Réécrire `db.py` pour PostgreSQL (Neon, Supabase…). |
-| Mise en veille | Supprimée (l'instance tourne en continu). | Demeure (réveil ~1 min). |
-| Complexité | Une seule pièce. | Deux services, limites des offres gratuites à vérifier. |
+| Afficher le site | Render (inchangé) | 750 heures par mois ; veille après 15 min sans visite, réveil ~1 min. |
+| Garder les événements et les lieux | Neon (base PostgreSQL) | 0,5 Go par projet, quota de calcul de 100 « CU-heures » par mois ; le calcul s'arrête après 5 min sans requête et redémarre à la suivante. |
+| Collecter les événements | GitHub Actions | Gratuit pour un dépôt public. |
 
-**Recommandation : A.** Le coût est faible au regard du temps gagné, et le
-site devient rapide. PostgreSQL pourra venir plus tard si le projet décolle.
+**Pourquoi Neon plutôt que Supabase :** Supabase met en pause un projet
+gratuit après une semaine d'inactivité, et il reste hors ligne jusqu'à une
+réactivation manuelle. Neon n'arrête que le calcul, qui redémarre seul.
+
+**Pourquoi la collecte sur GitHub Actions :** aujourd'hui, elle ne tourne
+que si quelqu'un visite le site. Sur GitHub, elle tourne à heures fixes, ne
+dépend pas du réveil du site, et chaque passage laisse un journal lisible.
+
+**Ce qu'on accepte avec le gratuit :**
+
+- Le premier visiteur après 15 minutes de calme attend toujours environ une
+  minute. Parade possible : un service gratuit qui visite le site toutes les
+  10 minutes (un seul service allumé en continu consomme ~744 h, sous les
+  750 h). **À vérifier** que Render le tolère.
+- 0,5 Go suffit largement pour du texte, pas pour des photos. Les images
+  envoyées par les bars (étape 3) iront chez un service d'images gratuit, à
+  choisir le moment venu.
+- Le quota de calcul de Neon impose que le site garde le programme en
+  mémoire quelques minutes au lieu d'interroger la base à chaque visite.
+- GitHub suspend les tâches planifiées d'un dépôt public après 60 jours sans
+  activité ; un commit suffit à les relancer.
+- Le dépôt est public : l'adresse secrète de la base ne doit **jamais** être
+  écrite dans le code. Elle se range dans les « secrets » de GitHub et dans
+  les variables d'environnement de Render.
 
 ---
 
@@ -89,20 +113,34 @@ quand… ».
 
 ## Étape 0 — Mesurer avant de construire
 
-1. Ouvrir `/api/sources` sur le site en ligne : pour chacune des 29 sources,
-   on voit si elle répond et combien d'événements elle donne.
+1. Lancer l'audit des sources (`tools/audit_sources.py`). Il tourne sur
+   GitHub Actions (onglet **Actions** > **Audit des sources** > **Run
+   workflow**) et affiche un tableau sur la page du run : pour chaque
+   source, répond-elle, combien d'événements à venir, avec quelle part
+   d'heures, de lieux, d'images et de prix.
 2. Classer les sources : **garder** (fonctionne), **réparer** (répond mais
    0 événement ou fiches incomplètes), **abandonner** (bloque ou interdit la
    collecte).
-3. Choisir l'hébergement (A ou B ci-dessus).
+3. ~~Choisir l'hébergement~~ : fait, option gratuite (voir plus haut).
 
-**Fini quand :** le tableau des sources est rempli et l'hébergement choisi.
+**Fini quand :** le tableau des sources est rempli.
 
 ---
 
 ## Étape 1 — Socle de données
 
-### Ce qui change
+### Mise en place de la base Neon
+
+1. Vincent crée un compte Neon et un projet (région Europe).
+2. Il range l'adresse de connexion dans les secrets de GitHub et dans les
+   variables d'environnement de Render, sans jamais la coller dans le code
+   ni dans une conversation.
+3. Une seconde base « essai » (Neon appelle ça une branche) sert aux tests,
+   pour ne jamais toucher à la vraie.
+4. `db.py` est réécrit pour PostgreSQL ; le reste de l'application ne
+   change pas.
+
+### Ce qui change dans les données
 
 **Nouvelle table `lieux`**
 
@@ -149,9 +187,10 @@ après).
 
 ## Étape 2 — Collecte fiable
 
-1. **Planifiée, plus déclenchée par les visites.** Deux à quatre fois par
-   jour, une seule collecte à la fois (aujourd'hui, les deux processus du
-   serveur peuvent en lancer une chacun).
+1. **Planifiée sur GitHub Actions, plus déclenchée par les visites.** Deux
+   à quatre fois par jour, une seule collecte à la fois (aujourd'hui, les
+   deux processus du serveur peuvent en lancer une chacun). Le site, lui, ne
+   fait plus que lire la base.
 2. **Protéger `/api/refresh`.** Aujourd'hui, n'importe qui derrière le mot de
    passe peut relancer une collecte par un simple lien. Une fois le mot de
    passe retiré, n'importe quel robot pourra le faire. Il faut une clé.
@@ -244,7 +283,8 @@ bars.
 
 ## Décisions à prendre, dans l'ordre
 
-1. Hébergement : A (payant, recommandé) ou B (gratuit).
+1. ~~Hébergement~~ : décidé le 12 octobre 2026, option gratuite
+   (Render + Neon + GitHub Actions).
 2. Liste des bars et petits lieux cibles.
 3. Date d'ouverture publique (proposition : après l'étape 2).
 4. Modération : validation systématique au début (proposition : oui).
