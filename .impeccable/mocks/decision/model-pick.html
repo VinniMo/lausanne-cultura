@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=390">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--ground:#0d1b2e;--panel:#13243b;--text:#f4f6fa;--muted:#8fa0b8;--amber:#ffb21a;--free:#5ee08a;--rule:#22364f}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:390px;height:844px;overflow:hidden;background:var(--ground);color:var(--text);font-family:Barlow,system-ui,sans-serif;position:relative}
+.top{display:flex;justify-content:space-between;align-items:center;padding:14px 16px}
+.logo{font-family:'Barlow Semi Condensed';font-weight:700;font-size:17px;letter-spacing:.01em}
+.search{display:flex;gap:6px;align-items:center;font-size:14px;font-weight:500;color:var(--muted)}
+.head{display:flex;justify-content:space-between;align-items:flex-end;padding:8px 16px 0}
+h1{font-family:'Barlow Semi Condensed';font-weight:600;font-size:40px;line-height:1}
+.clock{font-family:'Barlow Semi Condensed';font-weight:700;font-size:40px;color:var(--amber);font-variant-numeric:tabular-nums}
+.sub{padding:4px 16px 0;color:var(--muted);font-size:14px}
+.tabs{display:flex;margin:16px 16px 0;border:1.5px solid var(--rule);border-radius:10px;overflow:hidden}
+.tab{flex:1;text-align:center;font-size:14px;font-weight:600;padding:10px 0;color:var(--muted)}
+.tab.on{background:var(--text);color:var(--ground)}
+.filters{display:flex;gap:8px;padding:12px 16px}
+.f{font-size:13px;font-weight:600;padding:7px 11px;border-radius:999px;border:1.5px solid var(--rule);color:var(--muted)}
+.f.on{border-color:var(--free);color:var(--free)}
+.cols{display:grid;grid-template-columns:58px 1fr 66px;gap:10px;padding:8px 16px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--rule)}
+.row{display:grid;grid-template-columns:58px 1fr 66px;gap:10px;padding:13px 16px;border-bottom:1px solid var(--rule);align-items:start}
+.time{font-family:'Barlow Semi Condensed';font-weight:700;font-size:22px;font-variant-numeric:tabular-nums}
+.line{display:inline-block;font-family:'Barlow Semi Condensed';font-weight:700;font-size:11px;padding:2px 6px;border-radius:4px;color:#0d1b2e;margin-right:6px;vertical-align:2px}
+.t{font-size:16px;font-weight:600;line-height:1.2}
+.v{font-size:13px;color:var(--muted);margin-top:3px}
+.v .ok{color:var(--free);font-weight:600}
+.in{font-family:'Barlow Semi Condensed';font-weight:700;font-size:18px;color:var(--amber);text-align:right;line-height:1.1}
+.in small{display:block;font-size:11px;font-weight:600;color:var(--muted)}
+.live .time{color:var(--muted)}
+.note{position:absolute;bottom:6px;right:10px;font-size:10px;color:var(--muted)}
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="logo">LAUSANNE CULTURA</span>
+  <span class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>Chercher</span>
+</header>
+<div class="head"><h1>Prochains départs</h1><span class="clock">18:42</span></div>
+<p class="sub">Vendredi 16 octobre · 14 plans pour toi · 3 masqués</p>
+<nav class="tabs"><span class="tab on">Ce soir</span><span class="tab">Demain</span><span class="tab">Week-end</span><span class="tab">Plus tard</span></nav>
+<div class="filters"><span class="f on">● Mes goûts</span><span class="f">Gratuit / petit prix</span><span class="f">Thèmes ▾</span></div>
+<div class="cols"><span>Heure</span><span>Événement · lieu</span><span style="text-align:right">Dans</span></div>
+<article class="row live">
+  <span class="time">18:30</span>
+  <div><p class="t"><span class="line" style="background:#ff9db8">EXP</span>Vernissage, dessins de presse</p><p class="v">Galerie du Flon · <span class="ok">Gratuit</span></p></div>
+  <span class="in">en cours<small>jusqu'à 21:00</small></span>
+</article>
+<article class="row">
+  <span class="time">19:00</span>
+  <div><p class="t"><span class="line" style="background:#ff7a4d">MUS</span>Jam session ouverte</p><p class="v">Le Bourg · <span class="ok">Gratuit</span></p></div>
+  <span class="in">18 min</span>
+</article>
+<article class="row">
+  <span class="time">20:30</span>
+  <div><p class="t"><span class="line" style="background:#48d1cc">CIN</span>Courts métrages suisses</p><p class="v">Zinéma · CHF 12</p></div>
+  <span class="in">1 h 48</span>
+</article>
+<article class="row">
+  <span class="time">21:00</span>
+  <div><p class="t"><span class="line" style="background:#ff7a4d">MUS</span>Les Sœurs Ferraille</p><p class="v">Le Romandie · CHF 18</p></div>
+  <span class="in">2 h 18</span>
+</article>
+<p class="note">Contenu d'exemple fictif</p>
+</body>
+</html>

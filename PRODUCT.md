@@ -10,6 +10,8 @@ web
 
 Habitants de Lausanne, en priorité les jeunes (tranche d'âge exacte non fixée). Ils cherchent quoi faire ce soir ou ce week-end et veulent trouver vite une sortie, y compris dans des lieux qu'ils ne connaissent pas encore.
 
+« Jeune » renvoie d'abord à un usage pratique, pas à un style : un visuel clair, des événements qui les concernent, un outil qui va droit au but.
+
 Le site est pensé d'abord pour le mobile (selon le README ; usage mobile majoritaire non mesuré).
 
 ## Product Purpose
@@ -35,7 +37,8 @@ L'agenda officiel de la Ville (agenda.lausanne.ch) a un registre très classique
 
 - Fonctions actuelles : recherche par mot-clé, filtre par thème, sélection « À ne pas manquer », fiche détaillée avec lien vers le site officiel de l'événement.
 - Thèmes : Musique, Théâtre, Exposition, Cinéma, Danse, Festival, Famille, Conférence, Sport, Humour, Atelier, Marché, Clubbing (+ « Culture » par défaut).
-- Pas de compte utilisateur, de favoris ni de billetterie.
+- Pas de compte utilisateur ni de billetterie.
+- Prévu dans la refonte de l'accueil : partager un événement ; filtre « gratuit / petit prix » (limité tant que les prix collectés manquent souvent) ; **mes goûts** : choisir les thèmes et lieux qui intéressent, masquer ceux qui n'intéressent jamais (exemple : ne plus voir l'Opéra), enregistrés sur le téléphone, sans compte.
 - Langue : français uniquement. Contexte suisse (prix en CHF).
 - Hébergement : Render, offre gratuite. L'accès en ligne est pour l'instant protégé par mot de passe.
 - Décisions ouvertes :
@@ -49,7 +52,7 @@ L'agenda officiel de la Ville (agenda.lausanne.ch) a un registre très classique
 
 - Nom : **Lausanne Cultura**.
 - Présents dans le code mais pas confirmés comme définitifs : le monogramme « L·C » et l'accroche « Vivez la culture, une nuit à la fois. »
-- Registre voulu : parler aux jeunes, à l'opposé du ton institutionnel et classique de l'agenda officiel.
+- Registre voulu : direct et pratique, à l'opposé du ton institutionnel et classique de l'agenda officiel.
 
 ## Evidence on Hand
 
@@ -61,5 +64,6 @@ L'agenda officiel de la Ville (agenda.lausanne.ch) a un registre très classique
 
 1. **Décider vite.** La question « que faire ce soir ou ce week-end ? » doit trouver une réponse en quelques secondes.
 2. **Faire découvrir.** Les petits lieux et les scènes alternatives ont autant de place que les grandes institutions.
-3. **Parler aux jeunes.** Ton direct et vivant, loin du registre institutionnel.
+3. **Droit au but.** Un visuel clair et pratique : chaque élément aide à choisir, rien ne retarde la décision. Ton direct, loin du registre institutionnel.
 4. **Honnêteté des données.** Afficher ce qui est connu, signaler clairement ce qui manque, ne jamais combler un trou par une information inventée.
+5. **Chacun son fil.** Chacun voit d'abord ce qui l'intéresse ; ce qui est masqué reste signalé et récupérable d'un geste.

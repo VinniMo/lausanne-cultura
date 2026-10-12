@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=390">
+<link href="https://fonts.googleapis.com/css2?family=Cabin+Sketch:wght@700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--slate:#252a28;--slate2:#303634;--chalk:#f1f0ea;--dim:#a3a9a5;--yellow:#f5d65b;--pink:#f59cc3;--blue:#8fcbe6;--rule:#3d4441}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:390px;height:844px;overflow:hidden;background:var(--slate);color:var(--chalk);font-family:'Atkinson Hyperlegible',system-ui,sans-serif;position:relative}
+.top{display:flex;justify-content:space-between;align-items:center;padding:14px 16px}
+.logo{font-weight:700;font-size:16px}
+.search{display:flex;gap:6px;align-items:center;font-size:14px;color:var(--dim)}
+.head{padding:6px 16px 0}
+h1{font-family:'Cabin Sketch';font-weight:700;font-size:66px;line-height:1}
+.under{display:block;margin-top:-2px}
+.meta{margin-top:8px;font-size:14px;color:var(--dim)}
+.meta b{color:var(--chalk)}
+.tabs{display:flex;margin:16px 16px 0;background:var(--slate2);border-radius:10px;padding:3px}
+.tab{flex:1;text-align:center;font-size:14px;font-weight:700;padding:9px 0;color:var(--dim);border-radius:8px}
+.tab.on{background:var(--chalk);color:var(--slate)}
+.filters{display:flex;gap:8px;padding:12px 16px 10px}
+.f{font-size:13px;font-weight:700;padding:7px 11px;border-radius:999px;border:1.5px solid var(--rule);color:var(--dim)}
+.f.on{border-color:var(--chalk);color:var(--chalk)}
+.row{display:grid;grid-template-columns:62px 1fr;gap:12px;padding:13px 16px;border-top:1px solid var(--rule)}
+.time{font-weight:700;font-size:22px}
+.t{font-size:17px;font-weight:700;line-height:1.2}
+.v{font-size:14px;color:var(--dim);margin-top:3px;display:flex;gap:6px;align-items:center}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.price{display:inline-block;margin-top:6px;font-size:14px;font-weight:700;position:relative;padding:2px 8px}
+.circle{position:absolute;left:-4px;top:-5px;width:calc(100% + 8px);height:calc(100% + 10px)}
+.wiped{opacity:.42}
+.wiped .t{text-decoration:line-through;text-decoration-thickness:2px}
+.restore{font-size:13px;font-weight:700;color:var(--yellow);text-decoration:underline;margin-top:4px;display:inline-block}
+.note{position:absolute;bottom:6px;right:10px;font-size:10px;color:var(--dim)}
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="logo">Lausanne Cultura</span>
+  <span class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>Chercher</span>
+</header>
+<section class="head">
+  <h1>Ce soir</h1>
+  <svg class="under" width="190" height="12" viewBox="0 0 190 12"><path d="M3 8 C 40 3, 90 10, 128 5 S 175 4, 187 7" stroke="#f5d65b" stroke-width="3.5" fill="none" stroke-linecap="round"/></svg>
+  <p class="meta">Vendredi 16 oct. · 18:42 · <b>14 plans pour toi</b> · 3 masqués</p>
+</section>
+<nav class="tabs"><span class="tab on">Ce soir</span><span class="tab">Demain</span><span class="tab">Week-end</span><span class="tab">Plus tard</span></nav>
+<div class="filters"><span class="f on">Mes goûts</span><span class="f">Gratuit / petit prix</span><span class="f">Thèmes ▾</span></div>
+<article class="row">
+  <span class="time">19h</span>
+  <div><p class="t">Jam session ouverte</p><p class="v"><i class="dot" style="background:var(--pink)"></i>Le Bourg · petit lieu</p>
+  <span class="price">Gratuit<svg class="circle" viewBox="0 0 100 40" preserveAspectRatio="none"><path d="M8 22 C 6 8, 40 2, 70 5 S 98 16, 92 28 S 40 40, 14 33 S 4 18, 20 10" stroke="#f5d65b" stroke-width="2.6" fill="none" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg></span></div>
+</article>
+<article class="row">
+  <span class="time">20h30</span>
+  <div><p class="t">Courts métrages suisses</p><p class="v"><i class="dot" style="background:var(--blue)"></i>Zinéma · cinéma · CHF 12</p></div>
+</article>
+<article class="row wiped">
+  <span class="time">20h</span>
+  <div><p class="t">Récital lyrique</p><p class="v">Opéra de Lausanne · masqué par toi</p><span class="restore">Afficher quand même</span></div>
+</article>
+<article class="row">
+  <span class="time">21h</span>
+  <div><p class="t">Les Sœurs Ferraille</p><p class="v"><i class="dot" style="background:var(--pink)"></i>Le Romandie · salle · CHF 18</p></div>
+</article>
+<p class="note">Contenu d'exemple fictif</p>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=390">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap" rel="stylesheet">
+<style>
+:root{--blue:#1f2fe6;--paper:#f3f3ef;--ink:#0c0c12;--free:#c6f432;--muted:#55556a;--rule:#cfcfd8}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:390px;height:844px;overflow:hidden;background:var(--paper);color:var(--ink);font-family:Archivo,system-ui,sans-serif;position:relative}
+.top{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 6px;background:var(--blue);color:#fff}
+.logo{font-weight:800;font-stretch:125%;font-size:15px;letter-spacing:-.01em}
+.search{display:flex;gap:6px;align-items:center;font-size:14px;font-weight:600;border:1.5px solid rgba(255,255,255,.55);border-radius:999px;padding:7px 12px}
+.band{background:var(--blue);color:#fff;padding:10px 16px 0}
+.now{font-size:13px;font-weight:500;opacity:.85}
+h1{font-size:88px;line-height:.84;font-weight:900;font-stretch:125%;letter-spacing:-.045em;margin:12px 0 10px}
+.sum{font-size:15px;font-weight:600}
+.sum b{background:var(--free);color:var(--ink);padding:0 5px;border-radius:3px}
+.tabs{display:flex;gap:6px;margin-top:18px;padding-bottom:14px}
+.tab{font-size:14px;font-weight:700;padding:9px 13px;border-radius:999px;color:#fff;border:1.5px solid rgba(255,255,255,.4)}
+.tab.on{background:#fff;color:var(--blue);border-color:#fff}
+.filters{display:flex;gap:8px;padding:12px 16px;border-bottom:2px solid var(--ink)}
+.f{font-size:14px;font-weight:600;padding:8px 12px;border-radius:999px;border:1.5px solid var(--ink)}
+.f.on{background:var(--ink);color:var(--paper)}
+.row{display:grid;grid-template-columns:96px 1fr;gap:12px;padding:13px 16px;border-bottom:1px solid var(--rule)}
+.h{font-size:50px;line-height:.86;font-weight:900;font-stretch:62%;letter-spacing:-.02em}
+.h small{font-size:27px;vertical-align:top;margin-left:1px}
+.t{font-size:17px;font-weight:700;line-height:1.18}
+.v{font-size:14px;color:var(--muted);margin-top:4px;display:flex;gap:6px;align-items:center}
+.sq{width:9px;height:9px;display:inline-block}
+.p{display:inline-block;margin-top:7px;font-size:13px;font-weight:700;padding:3px 7px;border-radius:3px;background:#e2e2ea}
+.p.free{background:var(--free)}
+.note{position:absolute;bottom:6px;right:10px;font-size:10px;color:var(--muted);background:var(--paper);padding:2px 4px}
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="logo">Lausanne Cultura</span>
+  <span class="search">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+    Chercher
+  </span>
+</header>
+<section class="band">
+  <p class="now">Vendredi 16 octobre · il est 18:42</p>
+  <h1>Ce soir</h1>
+  <p class="sum">14 plans pour toi, dont <b>5 gratuits</b> <span style="opacity:.75;font-weight:500">· 3 masqués</span></p>
+  <nav class="tabs">
+    <span class="tab on">Ce soir</span><span class="tab">Demain</span><span class="tab">Week-end</span><span class="tab">Plus tard</span>
+  </nav>
+</section>
+<div class="filters">
+  <span class="f on">Mes goûts</span><span class="f">Gratuit / petit prix</span><span class="f">Thèmes ▾</span>
+</div>
+<article class="row">
+  <div class="h">19h</div>
+  <div><p class="t">Jam session ouverte</p><p class="v"><i class="sq" style="background:#ff4f2e"></i>Le Bourg · petit lieu</p><span class="p free">Gratuit</span></div>
+</article>
+<article class="row">
+  <div class="h">20h<small>30</small></div>
+  <div><p class="t">Courts métrages suisses, soirée ciné-club</p><p class="v"><i class="sq" style="background:#00a6a6"></i>Zinéma · cinéma</p><span class="p">CHF 12</span></div>
+</article>
+<article class="row">
+  <div class="h">21h</div>
+  <div><p class="t">Les Sœurs Ferraille + 1re partie</p><p class="v"><i class="sq" style="background:#ff4f2e"></i>Le Romandie · salle</p><span class="p">CHF 18</span></div>
+</article>
+<p class="note">Contenu d'exemple fictif</p>
+</body>
+</html>
