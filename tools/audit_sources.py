@@ -46,6 +46,7 @@ def audit_one(url: str, today) -> dict:
         "method": method,
         "error": error,
         "found": len(events),
+        "events": events,
         "upcoming": upcoming,
         "seconds": round(time.time() - started, 1),
     }
@@ -88,13 +89,16 @@ def report(rows: list[dict], today) -> str:
             f"| {r['seconds']} s |"
         )
 
-    lines += ["", "## Exemples par source", ""]
+    lines += ["", "## Exemples par source", "",
+              "Événements à venir, ou à défaut ce que la source a renvoyé.", ""]
     for r in rows:
-        if r["upcoming"]:
+        sample = r["upcoming"] or r["events"]
+        if sample:
             lines.append(f"**{r['url']}**")
-            for e in r["upcoming"][:3]:
+            for e in sample[:3]:
+                when = f"{e.get('date')} {e.get('time') or ''}".strip() or "sans date"
                 place = e.get("location") or "lieu inconnu"
-                lines.append(f"- {e.get('date')} {e.get('time') or ''} · {e['title'][:70]} · {place[:40]}")
+                lines.append(f"- {when} · {e['title'][:70]} · {place[:40]}")
             lines.append("")
 
     failed = [r for r in rows if r["error"]]
