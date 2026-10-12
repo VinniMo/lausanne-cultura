@@ -162,7 +162,7 @@ ul { list-style: none; }
 
 .demo-note { padding: 0 var(--gutter) 6px; font-size: 13px; color: var(--muted); }
 .demo-mark {
-    display: inline-block; font-size: 11.5px; font-weight: 800; text-transform: uppercase;
+    display: inline-block; font-size: 12px; font-weight: 800; text-transform: uppercase;
     letter-spacing: 0.03em; color: var(--ink); border: 1.5px dashed var(--ink);
     padding: 0 5px; margin-right: 4px; transform: rotate(-1.5deg);
 }
@@ -239,7 +239,7 @@ ul { list-style: none; }
     font-weight: 700; font-size: 12.5px; padding: 0 5px; margin-top: 2px; letter-spacing: 0.01em;
 }
 .is-masked .t::after {
-    content: "masqué"; font-size: 11.5px; font-weight: 600; color: var(--muted);
+    content: "masqué"; font-size: 12px; font-weight: 600; color: var(--muted);
     border: 1px solid var(--dot); padding: 0 4px; margin-left: 6px; vertical-align: 2px;
 }
 
