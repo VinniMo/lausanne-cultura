@@ -41,6 +41,7 @@ lausannoise dans une interface artistique, épurée et très visuelle.
 | GET     | `/api/events`     | Liste filtrable (`?category=…&search=…`)      |
 | GET     | `/api/categories` | Catégories disponibles + comptes              |
 | GET/POST| `/api/refresh`    | Force un scrape immédiat                      |
+| GET     | `/api/sources`    | Diagnostic : état et nombre d'événements par source |
 | GET     | `/api/health`     | Statut + nombre d'événements + dernier scrape |
 
 ## Lancer en local
