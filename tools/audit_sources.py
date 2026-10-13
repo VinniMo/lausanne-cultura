@@ -72,14 +72,16 @@ def verdict(row: dict) -> str:
 
 def report(rows: list[dict], today) -> str:
     working = [r for r in rows if verdict(r) == "fonctionne"]
-    unique = {e["id"] for r in rows for e in r["upcoming"]}
-    week = {e["id"] for r in rows for e in r["upcoming"] if _this_week(e, today)}
+    # What the site shows: one record per event once duplicates are merged.
+    ranked = [(2 if r["url"] in config.SCRAPE_VENUES else 1, dict(e)) for r in rows for e in r["upcoming"]]
+    merged = scraper.merge_duplicates(ranked)
+    week = [e for e in merged if _this_week(e, today)]
     lines = [
         f"# Audit des sources ({today.isoformat()})",
         "",
         f"**{len(working)} source(s) sur {len(rows)}** donnent des événements à venir ; "
-        f"**{len(unique)}** événements à venir distincts au total, dont "
-        f"**{len(week)}** sur les sept prochains jours.",
+        f"**{len(merged)}** événements à venir une fois les doublons fusionnés "
+        f"({len(ranked) - len(merged)} doublons), dont **{len(week)}** sur les sept prochains jours.",
         "",
         "Pourcentages calculés sur les événements à venir de chaque source.",
         "",

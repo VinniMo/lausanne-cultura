@@ -58,7 +58,7 @@ class ListingTest(unittest.TestCase):
 
     def test_the_site_is_routed_to_this_reader(self):
         self.assertIs(reader_for(LISTING_URL), lt)
-        self.assertIsNone(reader_for("https://mad.ch/agenda/"))
+        self.assertIsNone(reader_for("https://vidy.ch/fr/calendrier/"))
 
 
 class EventPagesTest(unittest.TestCase):

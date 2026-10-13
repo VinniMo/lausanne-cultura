@@ -112,5 +112,64 @@ class UndatedTest(unittest.TestCase):
         self.assertEqual(log.call_args.args[2:4], ("empty", 0))
 
 
+def evt(title, day, venue="", time="", end="", **extra):
+    record = {"id": f"{title}|{venue}|{day}|{time}", "title": title, "date": day,
+              "end_date": end, "time": time, "location": venue}
+    record.update(extra)
+    return record
+
+
+class MergeTest(unittest.TestCase):
+    def merge(self, *ranked):
+        return scraper.merge_duplicates(list(ranked))
+
+    def test_venue_record_wins_and_is_completed(self):
+        venue = evt("616 Halloween", "2026-10-21", "MAD – Mainfloor", url="https://mad.club/t")
+        agenda = evt("616 Halloween - 2", "2026-10-21", "MAD - MAINFLOOR", time="23:00",
+                     price="Dès 15 CHF", address="Rue de Genève 23")
+        [kept] = self.merge((1, agenda), (2, venue))
+        self.assertEqual(kept["url"], "https://mad.club/t")
+        self.assertEqual((kept["time"], kept["price"], kept["address"]),
+                         ("23:00", "Dès 15 CHF", "Rue de Genève 23"))
+
+    def test_line_up_added_to_the_title_still_matches(self):
+        merged = self.merge((2, evt("COACHING EPFL · DJ Kemuel", "2026-10-13", "D! Club")),
+                            (1, evt("Coaching EPFL", "2026-10-13", "D! Club")))
+        self.assertEqual(len(merged), 1)
+
+    def test_rooms_floors_and_showings_stay_apart(self):
+        self.assertEqual(len(self.merge((2, evt("HEC HALLOWEEN", "2026-10-29", "D! Club")),
+                                        (1, evt("HEC HALLOWEEN - 3", "2026-10-29", "Bar Club ABC")))), 2)
+        self.assertEqual(len(self.merge((2, evt("JEUDREDI BIG Halloween", "2026-10-29", "MAD – Mainfloor")),
+                                        (2, evt("Halloween", "2026-10-29", "MAD – Jetlag")))), 2)
+        self.assertEqual(len(self.merge((1, evt("Monsoon Wedding", "2026-11-01", "Cinémathèque suisse", "15:00")),
+                                        (1, evt("Monsoon Wedding", "2026-11-01", "Cinémathèque suisse", "20:30")))), 2)
+
+    def test_close_but_different_titles_stay_apart(self):
+        merged = self.merge(
+            (1, evt("ECAL Bachelor : Programme de films de diplôme", "2026-10-27", "Cinémathèque suisse")),
+            (1, evt("ECAL Master : Programme de films de diplôme", "2026-10-27", "Cinémathèque suisse")))
+        self.assertEqual(len(merged), 2)
+
+    def test_short_run_matches_each_of_its_days(self):
+        merged = self.merge((2, evt("William Christie – Orchestre de Chambre", "2026-10-28",
+                                    "Théâtre de Beaulieu", end="2026-10-29")),
+                            (1, evt("William Christie - Orchestre de Chambre", "2026-10-29", "Théâtre de Beaulieu")))
+        self.assertEqual(len(merged), 1)
+
+    def test_exhibition_does_not_swallow_its_opening_night(self):
+        merged = self.merge((1, evt("Magie et Design", "2026-11-06", "mudac", end="2027-04-11")),
+                            (1, evt("Vernissage – Magie et Design", "2026-11-06", "mudac", "18:00")))
+        self.assertEqual(len(merged), 2)
+        self.assertEqual(len(self.merge((1, evt("Magie et Design", "2026-11-06", "mudac", end="2027-04-11")),
+                                        (1, evt("Vernissage – Magie et Design", "2026-11-20", "mudac")))), 2)
+
+    def test_unknown_venue_needs_a_clear_title(self):
+        self.assertEqual(len(self.merge((1, evt("Silence et marginalité", "2026-12-05", "Collection de l'Art Brut")),
+                                        (1, evt("Silence et marginalité, une immersion", "2026-12-05")))), 1)
+        self.assertEqual(len(self.merge((1, evt("Karaoké", "2026-12-05", "Satellite")),
+                                        (1, evt("Karaoké géant", "2026-12-05")))), 2)
+
+
 if __name__ == "__main__":
     unittest.main()

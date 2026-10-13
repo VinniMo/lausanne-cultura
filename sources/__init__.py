@@ -7,16 +7,17 @@ Each reader module exposes:
 
 A raw event carries what the source says (title, date as YYYY-MM-DD, and
 when known time, end_date, location, address, description, image, price,
-url). The collector adds the identifier and the theme.
+url). The collector adds the identifier and the theme. When several events
+share one url (a club's agenda page), "key" tells them apart.
 """
 from __future__ import annotations
 
 from types import ModuleType
 from urllib.parse import urlparse
 
-from sources import lausanne_tourisme
+from sources import beaulieu, dclub, lausanne_tourisme, mad
 
-READERS: tuple[ModuleType, ...] = (lausanne_tourisme,)
+READERS: tuple[ModuleType, ...] = (lausanne_tourisme, dclub, mad, beaulieu)
 
 
 def reader_for(url: str) -> ModuleType | None:
