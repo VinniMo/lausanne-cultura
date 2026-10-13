@@ -23,6 +23,8 @@ lausannoise dans une interface artistique, épurée et très visuelle.
 ├── config.py       # Config immuable (env vars)
 ├── db.py           # Couche SQLite (init, upsert, queries)
 ├── scraper.py      # Scraping JSON-LD + fallback HTML
+├── sources/        # Modules dédiés par site (Lausanne Tourisme…)
+├── tools/          # Audit des sources, copies de pages (GitHub Actions)
 ├── seed_data.py    # Dataset de fallback (25 événements)
 ├── templates/
 │   └── index.html
@@ -75,6 +77,8 @@ Pas besoin d'API key GitHub CLI — tout est piloté par
 | `LAUSANNE_DB`     | `./events.db`  | Chemin SQLite                     |
 | `SCRAPE_INTERVAL` | `3600`         | TTL du cache scraping (secondes)  |
 | `SCRAPE_TIMEOUT`  | `12`           | Timeout HTTP du scraper           |
+| `SCRAPE_PAUSE`    | `0.3`          | Pause entre deux fiches d'une même source (secondes) |
+| `MAX_DETAIL_PAGES`| `300`          | Fiches lues au plus par source et par collecte |
 
 ## Design
 

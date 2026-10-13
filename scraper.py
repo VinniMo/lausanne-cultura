@@ -1,11 +1,14 @@
 """Scraper for Lausanne cultural sources.
 
 Strategy, for each configured source URL:
-    1. iCalendar feed (BEGIN:VCALENDAR): read its VEVENT entries.
-    2. JSON-LD structured data (schema.org/Event variants) on the page.
-    3. Listing pages of known aggregators (config.DETAIL_LINK_PATTERNS):
+    1. A source-specific reader (sources/) when the site has one.
+    2. iCalendar feed (BEGIN:VCALENDAR): read its VEVENT entries.
+    3. JSON-LD structured data (schema.org/Event variants) on the page.
+    4. Listing pages of known aggregators (config.DETAIL_LINK_PATTERNS):
        follow the links to each event page and read its JSON-LD.
-    4. Fall back to HTML heuristics.
+    5. Fall back to HTML heuristics.
+
+Only events with a readable date are kept.
 
 Every source run is logged with the method used and the number of events
 found, so /api/sources can show which sources actually work.
@@ -19,7 +22,7 @@ import hashlib
 import json
 import logging
 import re
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 from typing import Iterable
 from urllib.parse import urljoin, urlparse
@@ -27,7 +30,9 @@ from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup, Tag
 
+from agenda import fold, parse_day, today_local
 from config import config
+from sources import reader_for
 import db
 
 logger = logging.getLogger(__name__)
@@ -71,12 +76,53 @@ def _gen_id(title: str, date: str) -> str:
     return hashlib.md5(f"{title}|{date}".encode("utf-8")).hexdigest()[:10]
 
 
-def categorize(title: str, description: str = "") -> str:
+# Venues that say what the event is better than its words: a film at the
+# Cinémathèque whose summary mentions "famille" is still a film.
+VENUE_FIRST: tuple[tuple[str, str], ...] = (
+    (r"cinematheque|cinema|zinema", "Cinéma"),
+    (r"\bmad\b|d! club|folklor|bar club abc", "Clubbing"),
+)
+# Venues used when the words give nothing: a museum may also host a talk.
+VENUE_FALLBACK: tuple[tuple[str, str], ...] = (
+    (r"\bdocks\b|romandie|jumeaux jazz|chorus|concert hall", "Musique"),
+    (r"musee|mudac|mcba|elysee|plateforme 10|palais de rumine", "Exposition"),
+    (r"theatre|pulloff", "Théâtre"),
+    (r"\bbar\b|barberousse|captain cook|basebar", "Clubbing"),
+)
+
+
+# Whole words, plural allowed: "rap" must not match "Rappaz", nor
+# "techno" match "technique".
+_KEYWORDS = {kw: re.compile(rf"(?<!\w){re.escape(kw)}(?:s|x|e|es)?(?![\w-])")
+             for kws in CATEGORY_RULES.values() for kw in kws}
+
+
+def _venue_category(venue: str, rules: tuple[tuple[str, str], ...]) -> str | None:
+    folded = fold(venue)
+    return next((cat for pattern, cat in rules if re.search(pattern, folded)), None)
+
+
+def categorize(title: str, description: str = "", venue: str = "") -> str:
+    first = _venue_category(venue, VENUE_FIRST)
+    if first:
+        return first
     text = f"{title} {description}".lower()
     for category, keywords in CATEGORY_RULES.items():
-        if any(kw in text for kw in keywords):
+        if any(_KEYWORDS[kw].search(text) for kw in keywords):
             return category
-    return "Culture"
+    return _venue_category(venue, VENUE_FALLBACK) or "Culture"
+
+
+def complete_event(raw: dict) -> dict:
+    """Full event record from what a source-specific reader found."""
+    evt = {key: raw.get(key, "") for key in (
+        "title", "date", "time", "end_date", "location", "address",
+        "description", "image", "price", "url")}
+    # The event's own page identifies it best; the date tells repeats apart.
+    evt["id"] = _gen_id(raw.get("key") or evt["url"] or evt["title"], evt["date"])
+    evt["category"] = categorize(evt["title"], evt["description"], evt["location"])
+    evt.update(subcategory="", tags=[], featured=False)
+    return evt
 
 
 def _parse_iso_date(value: str) -> tuple[str, str]:
@@ -377,6 +423,11 @@ def _fetch(url: str) -> str:
 def scrape_one(url: str) -> tuple[list[dict], str]:
     """Collect one source. Returns (events, method used). Raises FetchError."""
     text = _fetch(url)
+    reader = reader_for(url)
+    if reader:
+        raw = reader.read(text, url, _fetch, today_local())
+        return [complete_event(r) for r in raw], reader.NAME
+
     if text.lstrip().startswith("BEGIN:VCALENDAR"):
         return parse_ics(text, url), "ical"
 
@@ -400,10 +451,105 @@ def scrape_one(url: str) -> tuple[list[dict], str]:
     return _extract_html_events(soup, base_url=url), "html"
 
 
+# ----- The same event seen by several sources -----
+
+# Words that do not tell two events apart. Lausanne Tourisme numbers its
+# repeats ("Insomnia - 2"); the number is dropped too.
+_TITLE_STOP = {"le", "la", "les", "de", "du", "des", "d", "l", "et", "en", "au", "aux",
+               "a", "un", "une", "the", "of", "and", "x", "feat", "ft", "avec", "par",
+               "pour", "sur", "by", "complet", "dj", "djs", "live"}
+_VENUE_STOP = {"club", "bar", "theatre", "salle", "lausanne", "le", "la", "les", "de",
+               "du", "des", "d", "l", "the", "et", "musee", "cantonal"}
+SHORT_RUN_DAYS = 7
+
+
+def _words(value: str, stop: set[str]) -> set[str]:
+    return {w for w in re.findall(r"[a-z0-9]+", fold(value)) if w not in stop}
+
+
+def _venue_words(evt: dict) -> set[str]:
+    words = re.findall(r"[a-z0-9]+", fold(evt.get("location", "")))
+    # "D! Club" is only common words: keep them rather than lose the venue.
+    return {w for w in words if w not in _VENUE_STOP} or set(words)
+
+
+def _title_words(evt: dict) -> set[str]:
+    words = _words(re.sub(r"\s+-\s+\d+$", "", evt.get("title", "")), _TITLE_STOP)
+    return {w for w in words if len(w) > 1}
+
+
+def _is_long(evt: dict) -> bool:
+    start = parse_day(evt["date"])
+    end = parse_day(evt.get("end_date", "")) or start
+    return (end - start).days > SHORT_RUN_DAYS
+
+
+def _days(evt: dict) -> list[date]:
+    """Days an event can be matched on: every day of a short run, else its start."""
+    start = parse_day(evt["date"])
+    end = parse_day(evt.get("end_date", "")) or start
+    if end < start or _is_long(evt):
+        return [start]
+    return [start + timedelta(days=n) for n in range((end - start).days + 1)]
+
+
+def same_event(a: dict, b: dict) -> bool:
+    """Same day (checked by the caller), close titles, same venue and time.
+
+    When in doubt, two records stay apart: a duplicate is a lesser harm
+    than an event that disappears.
+    """
+    if a.get("time") and b.get("time") and a["time"] != b["time"]:
+        return False  # two showings
+    if _is_long(a) != _is_long(b):
+        return False  # an exhibition and its opening night
+    ta, tb = _title_words(a), _title_words(b)
+    if not ta or not tb:
+        return False
+    small, big = sorted((ta, tb), key=len)
+    overlap = len(ta & tb) / len(ta | tb)
+    va, vb = _venue_words(a), _venue_words(b)
+    if va and vb:
+        # "Les Docks" and "Salle de concert des Docks" are one venue;
+        # "MAD – Mainfloor" and "MAD – Jetlag" are two floors.
+        if not (va <= vb or vb <= va):
+            return False
+        return small <= big or overlap >= 0.7
+    # A venue is unknown: the titles alone must say it.
+    return (small <= big and len(small) >= 2) or overlap >= 0.8
+
+
+_FILLABLE = ("time", "price", "address", "image", "description", "location")
+
+
+def merge_duplicates(ranked: list[tuple[int, dict]]) -> list[dict]:
+    """One record per event. ranked holds (source rank, event): the venue's
+    own site outranks a general agenda. The kept record is completed with
+    what the other one knows (time, price, address...)."""
+    def richness(evt: dict) -> int:
+        return sum(1 for field in _FILLABLE if evt.get(field))
+
+    order = sorted(ranked, key=lambda pair: (-pair[0], -richness(pair[1])))
+    kept: list[dict] = []
+    by_day: dict[date, list[dict]] = {}
+    for _, evt in order:
+        twin = next((k for day in _days(evt) for k in by_day.get(day, ())
+                     if k["id"] == evt["id"] or same_event(k, evt)), None)
+        if twin is not None:
+            for field in _FILLABLE:
+                if not twin.get(field) and evt.get(field):
+                    twin[field] = evt[field]
+            continue
+        kept.append(evt)
+        for day in _days(evt):
+            by_day.setdefault(day, []).append(evt)
+    return kept
+
+
 def scrape_sources(sources: Iterable[str] | None = None) -> list[dict]:
-    """Scrape every source URL and return a deduplicated list of events."""
+    """Scrape every source URL and return one record per event."""
     sources = sources or config.SCRAPE_SOURCES
-    aggregated: dict[str, dict] = {}
+    ranked: list[tuple[int, dict]] = []
 
     for url in sources:
         try:
@@ -413,14 +559,20 @@ def scrape_sources(sources: Iterable[str] | None = None) -> list[dict]:
             db.log_scrape("scraper", url, "error", 0, str(exc)[:300])
             continue
 
-        for evt in found:
-            aggregated[evt["id"]] = evt
+        dated = [evt for evt in found if parse_day(evt.get("date", ""))]
+        rank = 2 if url in config.SCRAPE_VENUES else 1
+        ranked.extend((rank, evt) for evt in dated)
 
-        status = "ok" if found else "empty"
-        db.log_scrape("scraper", url, status, len(found), method)
-        logger.info("Scraped %d events from %s (%s)", len(found), url, method)
+        # A card without a date does not help anyone choose an evening out.
+        if len(dated) < len(found):
+            method += f" · {len(found) - len(dated)} sans date écartés"
+        status = "ok" if dated else "empty"
+        db.log_scrape("scraper", url, status, len(dated), method)
+        logger.info("Scraped %d dated events from %s (%s)", len(dated), url, method)
 
-    return list(aggregated.values())
+    events = merge_duplicates(ranked)
+    logger.info("%d events after merging %d duplicates", len(events), len(ranked) - len(events))
+    return events
 
 
 def refresh_database() -> int:

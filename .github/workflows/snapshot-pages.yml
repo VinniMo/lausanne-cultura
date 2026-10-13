@@ -1,0 +1,40 @@
+# Copies de pages : enregistre une copie allégée des pages de
+# tools/snapshot_urls.txt dans snapshots/ et la publie sur la même branche.
+# Sert à écrire et tester les modules de collecte sans accès direct aux sites.
+name: Copies de pages
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - tools/snapshot_urls.txt
+      - tools/snapshot_pages.py
+      - .github/workflows/snapshot-pages.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: snapshot-${{ github.ref }}
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python tools/snapshot_pages.py
+      - name: Publier les copies sur la branche
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add snapshots
+          git diff --cached --quiet && exit 0
+          git commit -m "Copies de pages ($(date -u +%Y-%m-%dT%H:%MZ))"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
