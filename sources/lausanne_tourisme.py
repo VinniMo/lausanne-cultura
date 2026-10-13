@@ -201,8 +201,10 @@ def read(html: str, page_url: str, fetch: Callable[[str], str], today: date,
     max_pages = config.MAX_DETAIL_PAGES if max_pages is None else max_pages
     pause = config.SCRAPE_PAUSE_SECONDS if pause is None else pause
     window_end = today + timedelta(days=DETAIL_DAYS)
+    for url in [u for u, (at, _) in _cache.items() if time.time() - at >= CACHE_SECONDS]:
+        del _cache[url]
 
-    listing = [item for item in read_listing(html, page_url) if item["end"] >= today]
+    listing =[item for item in read_listing(html, page_url) if item["end"] >= today]
     this_week = sorted((item for item in listing if item["start"] <= window_end),
                        key=lambda item: max(item["start"], today))
     to_read = {item["url"] for item in this_week[:max_pages]}
