@@ -91,5 +91,26 @@ class DetailPagesTest(unittest.TestCase):
         self.assertEqual(len(events), 1)
 
 
+class UndatedTest(unittest.TestCase):
+    def test_events_without_a_date_are_not_kept(self):
+        found = [
+            {"id": "a", "title": "Avec date", "date": "2026-10-21"},
+            {"id": "b", "title": "Sans date", "date": ""},
+            {"id": "c", "title": "Date illisible", "date": "bientôt"},
+        ]
+        with mock.patch.object(scraper, "scrape_one", return_value=(found, "html")), \
+                mock.patch.object(scraper.db, "log_scrape") as log:
+            events = scraper.scrape_sources(["https://lieu.ch/agenda"])
+        self.assertEqual([e["id"] for e in events], ["a"])
+        log.assert_called_once_with("scraper", "https://lieu.ch/agenda", "ok", 1,
+                                    "html · 2 sans date écartés")
+
+    def test_source_with_only_undated_events_counts_as_empty(self):
+        with mock.patch.object(scraper, "scrape_one", return_value=([{"id": "b", "title": "x", "date": ""}], "html")), \
+                mock.patch.object(scraper.db, "log_scrape") as log:
+            self.assertEqual(scraper.scrape_sources(["https://lieu.ch/agenda"]), [])
+        self.assertEqual(log.call_args.args[2:4], ("empty", 0))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -27,6 +27,7 @@ from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup, Tag
 
+from agenda import parse_day
 from config import config
 import db
 
@@ -413,12 +414,16 @@ def scrape_sources(sources: Iterable[str] | None = None) -> list[dict]:
             db.log_scrape("scraper", url, "error", 0, str(exc)[:300])
             continue
 
-        for evt in found:
+        dated = [evt for evt in found if parse_day(evt.get("date", ""))]
+        for evt in dated:
             aggregated[evt["id"]] = evt
 
-        status = "ok" if found else "empty"
-        db.log_scrape("scraper", url, status, len(found), method)
-        logger.info("Scraped %d events from %s (%s)", len(found), url, method)
+        # A card without a date does not help anyone choose an evening out.
+        if len(dated) < len(found):
+            method += f" · {len(found) - len(dated)} sans date écartés"
+        status = "ok" if dated else "empty"
+        db.log_scrape("scraper", url, status, len(dated), method)
+        logger.info("Scraped %d dated events from %s (%s)", len(dated), url, method)
 
     return list(aggregated.values())
 
