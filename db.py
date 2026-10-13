@@ -68,7 +68,11 @@ def init_db() -> None:
 
 
 def upsert_event(evt: dict, source: str = "scraper") -> None:
-    """Insert or update an event keyed on its id."""
+    """Insert or update an event keyed on its id.
+
+    The event's own "source" (the site it was collected from) wins over the
+    source argument, which labels events that do not name one.
+    """
     now = time.time()
     tags = json.dumps(evt.get("tags", []), ensure_ascii=False)
     with get_conn() as conn:
@@ -91,12 +95,12 @@ def upsert_event(evt: dict, source: str = "scraper") -> None:
             evt.get("address", ""), evt.get("category", ""), evt.get("subcategory", ""),
             evt.get("description", ""), evt.get("image", ""), evt.get("price", ""),
             evt.get("url", ""), tags, 1 if evt.get("featured") else 0,
-            source, now, now,
+            evt.get("source") or source, now, now,
         ))
 
 
 def bulk_upsert(events: list[dict], source: str = "scraper") -> None:
-    """Upsert many events under the same source label."""
+    """Upsert many events (source labels those that do not name their own)."""
     for evt in events:
         upsert_event(evt, source=source)
 
@@ -145,6 +149,25 @@ def oldest_update(source: str) -> float:
 def delete_source(source: str) -> None:
     with get_conn() as conn:
         conn.execute("DELETE FROM events WHERE source = ?", (source,))
+
+
+def count_upcoming(source: str, today: str) -> int:
+    """Events stored under this source that are not over (dates as YYYY-MM-DD)."""
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT COUNT(*) AS n FROM events"
+            " WHERE source = ? AND COALESCE(NULLIF(end_date, ''), date) >= ?",
+            (source, today),
+        ).fetchone()["n"]
+
+
+def delete_unannounced(source: str, announced: set[str]) -> int:
+    """Delete this source's events whose id is not announced. Returns how many."""
+    with get_conn() as conn:
+        rows = conn.execute("SELECT id FROM events WHERE source = ?", (source,)).fetchall()
+        gone = [(r["id"],) for r in rows if r["id"] not in announced]
+        conn.executemany("DELETE FROM events WHERE id = ?", gone)
+    return len(gone)
 
 
 def list_categories() -> list[dict]:

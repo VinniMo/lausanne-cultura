@@ -461,6 +461,11 @@
             h('small', {}, evt.time ? `${multi ? 'Dès' : 'À'} ${evt.time}` : 'Heure non communiquée')];
     }
 
+    /** Site the event was collected from ("vidy.ch"), or '' for demo events. */
+    function sourceSite(evt) {
+        try { return new URL(evt.source).hostname.replace(/^www\./, ''); } catch { return ''; }
+    }
+
     function renderEventSheet(evt) {
         const venueHidden = hasVenue(evt) && tastes.venues.includes(venueKey(evt));
         const shareBtn = h('button', { type: 'button', class: 'btn btn-ink', onclick: () => share(evt) },
@@ -474,7 +479,8 @@
                 venueHidden ? `Ne plus masquer ${evt.location}` : `Masquer ${evt.location}`)
             : null;
 
-        $('#sheet-body').replaceChildren(
+        // replaceChildren writes null as the text "null": drop absent parts first.
+        $('#sheet-body').replaceChildren(...[
             h('h2', { class: 'ev-title', id: 'sheet-title' }, evt.title),
             h('dl', { class: 'ev-facts' },
                 h('div', {}, h('dt', {}, 'Rubrique'), h('dd', {}, h('span', { class: `tag ${tagClass(evt.rubric)}` }, evt.rubric))),
@@ -483,11 +489,12 @@
                     hasVenue(evt) ? evt.location : h('span', { class: 'nc' }, 'Lieu non communiqué'),
                     evt.address && fold(evt.address) !== venueKey(evt) ? h('small', {}, evt.address) : null)),
                 h('div', {}, h('dt', {}, 'Prix'), h('dd', {},
-                    evt.known && evt.price ? evt.price : h('span', { class: 'nc' }, 'Prix non communiqué')))),
+                    evt.known && evt.price ? evt.price : h('span', { class: 'nc' }, 'Prix non communiqué'))),
+                sourceSite(evt) ? h('div', {}, h('dt', {}, 'Source'), h('dd', {}, sourceSite(evt))) : null),
             evt.description ? h('p', { class: 'ev-desc' }, evt.description) : null,
             state.data.demo ? h('p', { class: 'ev-demo' }, 'Événement fictif (données de démonstration).') : null,
             h('div', { class: 'sheet-actions' }, shareBtn, linkBtn),
-            hideBtn);
+            hideBtn].filter(Boolean));
         eventSheet.dataset.eventId = evt.id;
     }
 
@@ -670,11 +677,11 @@
 
     function toast(message, actionLabel, onAction) {
         clearTimeout(toastTimer);
-        toastEl.replaceChildren(h('span', {}, message),
+        toastEl.replaceChildren(...[h('span', {}, message),
             actionLabel ? h('button', {
                 type: 'button',
                 onclick: () => { toastEl.hidden = true; onAction(); },
-            }, actionLabel) : null);
+            }, actionLabel) : null].filter(Boolean));
         toastEl.hidden = false;
         toastTimer = setTimeout(() => { toastEl.hidden = true; }, actionLabel ? 6000 : 3000);
     }

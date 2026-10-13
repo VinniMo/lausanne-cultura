@@ -27,6 +27,7 @@ from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup, Tag
 
+from agenda import fold, today_local
 from config import config
 import db
 
@@ -42,9 +43,12 @@ EVENT_TYPES = {
 
 CATEGORY_RULES: dict[str, tuple[str, ...]] = {
     # Order matters — first match wins. Clubbing before Musique to catch DJ/techno.
-    "Clubbing":  ("techno", "house", "club night", "after", "rave", "warehouse",
-                  "underground", "boiler room", "dj set", "afterhour", "all night",
-                  "d! club", "mad club", "folklore", "datcha"),
+    # Keywords match whole words only, with or without accents, singular or
+    # plural ("concert" also finds "Concerts"; "rap" does not find "photographie").
+    "Clubbing":  ("techno", "house", "club night", "afterparty", "after-party",
+                  "after party", "rave", "warehouse", "underground", "boiler room",
+                  "dj set", "afterhour", "all night", "d! club", "mad club",
+                  "folklore", "datcha"),
     "Musique":   ("concert", "jazz", "rock", "classique", "opéra", "orchestre",
                   "récital", "électronique", "electro", "dj", "chanson", "vivaldi",
                   "beethoven", "brahms", "verdi", "live band", "punk", "metal",
@@ -55,10 +59,9 @@ CATEGORY_RULES: dict[str, tuple[str, ...]] = {
                    "rétrospective", "musée", "installation"),
     "Cinéma":    ("cinéma", "film", "projection", "documentaire",
                   "court-métrage", "ciné", "avant-première"),
-    "Danse":     ("danse", "ballet", "chorégraphie", "flamenco",
-                  "contemporain", "performance"),
+    "Danse":     ("danse", "ballet", "chorégraphie", "flamenco", "performance"),
     "Festival":  ("festival", "fête", "nuit des musées", "open air"),
-    "Famille":   ("famille", "enfants", "jeune public", "marionnettes"),
+    "Famille":   ("famille", "enfant", "jeune public", "marionnette"),
     "Conférence": ("conférence", "débat", "symposium", "lecture", "talk"),
     "Sport":     ("sport", "marathon", "course", "match", "tournoi"),
     "Humour":    ("humour", "comedy", "stand-up", "one-man-show"),
@@ -66,15 +69,29 @@ CATEGORY_RULES: dict[str, tuple[str, ...]] = {
     "Marché":    ("marché", "foire", "artisanat"),
 }
 
+# Expressions that contain a keyword but mean something else.
+IGNORED_EXPRESSIONS: tuple[str, ...] = ("pop-up",)
+
+
+def _keyword_pattern(keywords: Iterable[str]) -> re.Pattern:
+    """Whole words or phrases, accent-free, with an optional plural s or x."""
+    words = "|".join(re.escape(fold(kw)) for kw in keywords)
+    return re.compile(rf"(?<!\w)(?:{words})[sx]?(?!\w)")
+
+
+_CATEGORY_PATTERNS = [(cat, _keyword_pattern(kws)) for cat, kws in CATEGORY_RULES.items()]
+_IGNORED_PATTERN = _keyword_pattern(IGNORED_EXPRESSIONS)
+
 
 def _gen_id(title: str, date: str) -> str:
     return hashlib.md5(f"{title}|{date}".encode("utf-8")).hexdigest()[:10]
 
 
 def categorize(title: str, description: str = "") -> str:
-    text = f"{title} {description}".lower()
-    for category, keywords in CATEGORY_RULES.items():
-        if any(kw in text for kw in keywords):
+    text = " ".join(fold(f"{title} {description}").split())
+    text = _IGNORED_PATTERN.sub(" ", text)
+    for category, pattern in _CATEGORY_PATTERNS:
+        if pattern.search(text):
             return category
     return "Culture"
 
@@ -299,17 +316,23 @@ def _detail_pattern(url: str) -> str | None:
     return None
 
 
-def _extract_html_events(soup: BeautifulSoup, base_url: str) -> list[dict]:
-    """Heuristic fallback: scan for elements that look like event cards."""
+HTML_CARD_LIMIT = 80
+
+
+def _extract_html_events(soup: BeautifulSoup, base_url: str) -> tuple[list[dict], bool]:
+    """Heuristic fallback: scan for elements that look like event cards.
+
+    Also returns whether every candidate was read (False past HTML_CARD_LIMIT).
+    """
     selector = re.compile(r"event|agenda|card|show|spectacle|concert", re.IGNORECASE)
-    candidates = soup.find_all(["article", "li", "div"], class_=selector, limit=80)
+    candidates = soup.find_all(["article", "li", "div"], class_=selector, limit=HTML_CARD_LIMIT + 1)
 
     events: list[dict] = []
-    for card in candidates:
+    for card in candidates[:HTML_CARD_LIMIT]:
         evt = _parse_card(card, base_url)
         if evt:
             events.append(evt)
-    return events
+    return events, len(candidates) <= HTML_CARD_LIMIT
 
 
 def _parse_card(card: Tag, base_url: str) -> dict | None:
@@ -374,59 +397,97 @@ def _fetch(url: str) -> str:
         raise FetchError(str(exc)) from exc
 
 
-def scrape_one(url: str) -> tuple[list[dict], str]:
-    """Collect one source. Returns (events, method used). Raises FetchError."""
+def scrape_one(url: str) -> tuple[list[dict], str, bool]:
+    """Collect one source. Returns (events, method used, complete).
+
+    complete is False when part of the source could not be read (an event
+    page failed, more event pages than MAX_DETAIL_PAGES, more cards than
+    HTML_CARD_LIMIT): the events found are then not the source's whole
+    programme. Raises FetchError.
+    """
     text = _fetch(url)
     if text.lstrip().startswith("BEGIN:VCALENDAR"):
-        return parse_ics(text, url), "ical"
+        return parse_ics(text, url), "ical", True
 
     soup = BeautifulSoup(text, "lxml")
     found = _extract_jsonld_events(soup, url)
     if found:
-        return found, "json-ld"
+        return found, "json-ld", True
 
     pattern = _detail_pattern(url)
     if pattern:
-        links = _detail_links(soup, url, pattern)[: config.MAX_DETAIL_PAGES]
+        all_links = _detail_links(soup, url, pattern)
+        links = all_links[: config.MAX_DETAIL_PAGES]
+        failed = 0
         for link in links:
             try:
                 page = BeautifulSoup(_fetch(link), "lxml")
             except FetchError as exc:
                 logger.warning("Detail page failed %s: %s", link, exc)
+                failed += 1
                 continue
             found.extend(_extract_jsonld_events(page, link))
-        return found, f"pages-detail ({len(links)} liens)"
+        complete = failed == 0 and len(links) == len(all_links)
+        return found, f"pages-detail ({len(links)} liens)", complete
 
-    return _extract_html_events(soup, base_url=url), "html"
+    found, complete = _extract_html_events(soup, base_url=url)
+    return found, "html", complete
 
 
-def scrape_sources(sources: Iterable[str] | None = None) -> list[dict]:
-    """Scrape every source URL and return a deduplicated list of events."""
+def scrape_sources(sources: Iterable[str] | None = None) -> tuple[list[dict], dict[str, int]]:
+    """Scrape every source URL.
+
+    Returns the deduplicated events, each tagged with the source URL that
+    gave it (the last one when several sources give the same event), and
+    the number of events given by each source that answered in full.
+    """
     sources = sources or config.SCRAPE_SOURCES
     aggregated: dict[str, dict] = {}
+    complete_counts: dict[str, int] = {}
 
     for url in sources:
         try:
-            found, method = scrape_one(url)
+            found, method, complete = scrape_one(url)
         except FetchError as exc:
             logger.warning("Fetch failed for %s: %s", url, exc)
             db.log_scrape("scraper", url, "error", 0, str(exc)[:300])
             continue
 
         for evt in found:
+            evt["source"] = url
             aggregated[evt["id"]] = evt
+        if found and complete:
+            complete_counts[url] = len(found)
 
         status = "ok" if found else "empty"
         db.log_scrape("scraper", url, status, len(found), method)
         logger.info("Scraped %d events from %s (%s)", len(found), url, method)
 
-    return list(aggregated.values())
+    return list(aggregated.values()), complete_counts
 
 
-def refresh_database() -> int:
-    """Run a scrape pass and persist results. Returns number of events written."""
-    events = scrape_sources()
+def refresh_database(sources: Iterable[str] | None = None) -> int:
+    """Run a scrape pass and persist results. Returns number of events written.
+
+    Each source's list is the reference for the events stored under it: an
+    event it no longer announces (cancelled, removed) is deleted, unless
+    another source still announces it. Nothing is deleted for a source that
+    failed, came back empty or incomplete, or suddenly gives fewer than half
+    of its upcoming events: that looks more like a broken page than a
+    programme that emptied.
+    """
+    events, complete_counts = scrape_sources(sources)
     if events:
-        db.bulk_upsert(events, source="scraper")
+        db.bulk_upsert(events)
         logger.info("Persisted %d scraped events", len(events))
+
+    announced = {evt["id"] for evt in events}
+    today = today_local().isoformat()
+    for url, count in complete_counts.items():
+        if count * 2 < db.count_upcoming(url, today):
+            logger.warning("Kept the events of %s: it now gives only %d", url, count)
+            continue
+        removed = db.delete_unannounced(url, announced)
+        if removed:
+            logger.info("Removed %d events no longer announced by %s", removed, url)
     return len(events)
