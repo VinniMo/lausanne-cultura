@@ -50,8 +50,8 @@ class Config:
 
     # ----- Tier 2: venue-specific (alternative & niche scenes) -----
     # Retirés : casinodemontbenon.ch et folklore-club.ch (le domaine
-    # n'existe pas ; le Folklor Club n'a pas de site, il est sur Lausanne
-    # Tourisme).
+    # n'existe pas ; aucun site trouvé pour le Folklor Club, ses soirées
+    # sont sur Lausanne Tourisme).
     SCRAPE_VENUES: tuple[str, ...] = (
         # Théâtre & danse
         "https://vidy.ch/fr/calendrier/",

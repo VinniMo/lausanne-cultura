@@ -1,6 +1,6 @@
 # Feuille de route
 
-État au 12 octobre 2026. Trois chantiers : le design (fait), la base de
+État au 13 octobre 2026. Trois chantiers : le design (fait), la base de
 données et la collecte des événements (à consolider), l'espace pour que les
 bars publient eux-mêmes (à construire).
 
@@ -15,8 +15,8 @@ documentation de l'hébergeur) de ce qui est une **hypothèse** à confirmer.
 |---|---|---|
 | Design | Fait | Accueil refondu, système décrit dans `DESIGN.md`. |
 | Base de données | Fragile | Une seule table `events`, pas de notion de lieu, d'origine ni de statut. Rien n'est jamais supprimé. |
-| Collecte | En panne | Aucune des 29 sources de `config.py` ne donne d'événement à venir (audit, section 2). |
-| Espace lieux | Inexistant | Aucun compte, aucun formulaire. Aucun bar dans les sources. |
+| Collecte | Repartie (1re vague) | Le 12 octobre, aucune des 29 sources ne donnait d'événement à venir (section 2). Le 13 octobre, Lausanne Tourisme, D! Club, MAD et Beaulieu sont lus par des modules dédiés (étape 1, avancement). |
+| Espace lieux | Inexistant | Aucun compte, aucun formulaire. Des bars apparaissent désormais via Lausanne Tourisme (Barberousse, Base Bar, Captain Cook…). |
 
 ### Les faiblesses précises de la base actuelle
 
@@ -131,8 +131,8 @@ aussi seul quand `config.py` ou `scraper.py` change.
 ## 3. Ordre proposé (revu après l'audit)
 
 1. **Étape 0 — Mesurer** : fait.
-2. **Étape 1 — Remettre de vrais événements** : priorité absolue, le site
-   est vide sans ça.
+2. **Étape 1 — Remettre de vrais événements** : première vague faite le
+   13 octobre, critère atteint (voir l'avancement de l'étape 1).
 3. **Étape 2 — Socle de données** (Neon, lieux, origine, statut).
 4. **Étape 3 — Collecte planifiée et surveillée.**
 5. **Ouverture publique** (retrait du mot de passe).
@@ -182,6 +182,50 @@ quand… ».
 **Fini quand :** l'audit montre au moins 50 événements réels à venir sur
 les sept prochains jours (seuil proposé, à ajuster), et plus aucune fiche
 sans date.
+
+### Avancement au 13 octobre 2026
+
+Fait (pull request « Étape 1 ») :
+
+- Les fiches sans date sont écartées à la collecte ; `/api/sources` dit
+  combien par source.
+- Adresses corrigées dans `config.py` à partir des vraies pages agenda ;
+  domaines inexistants et sites qui refusent les robots retirés.
+- Modules dédiés, testés sur des extraits des vraies pages :
+  - **Lausanne Tourisme** : la liste (plus de 1 200 événements, bars et
+    clubs compris), puis les fiches de la semaine pour l'heure, le prix et
+    les vraies dates. Une soirée hebdomadaire affichée sur un an
+    (« Water Pong », lundi) devient une carte par lundi.
+  - **D! Club** (avec le bar ABC), **MAD** (par étage), **Théâtre de
+    Beaulieu**.
+- **Doublons fusionnés** : même jour, même lieu, titres proches. La fiche
+  du lieu l'emporte et récupère l'heure, le prix, l'adresse de l'autre.
+  En cas de doute, les deux fiches restent : un doublon gêne moins qu'un
+  événement qui disparaît.
+- Thème déduit du lieu (Cinémathèque → Cinéma, MAD → Clubbing, bars →
+  Soirées & clubs) ; mots-clés lus en mots entiers.
+- L'audit compte les événements des sept prochains jours, après fusion.
+- Outil « Copies de pages » : GitHub Actions télécharge les pages des
+  lieux, pour écrire les modules sans accès direct aux sites.
+
+Mesuré (audit GitHub Actions du 13 octobre, avant D! Club, MAD et
+Beaulieu) : **241 événements sur les sept prochains jours**, tous de
+Lausanne Tourisme. Lieu connu à 95 %, image 100 %, heure 23 %, prix 8 %
+(heure et prix ne sont lus que sur les fiches de la semaine).
+
+Reste, par ordre d'intérêt pour le public cible :
+
+1. Les Docks (la date est dans l'adresse de chaque concert), Chorus,
+   Octogone, Arsenic, Vidy, OCL, musées : titres trouvés, dates à lire.
+2. Opéra et Cinémathèque : trouver la bonne page.
+3. Guidle et Zinéma : pages construites en JavaScript, illisibles sans
+   navigateur. À écarter sauf flux de données.
+
+Point de vigilance : sur Render gratuit, la base est effacée à chaque
+mise en veille. Au réveil, la collecte prend environ quatre minutes
+(Lausanne Tourisme seul : 2 à 4 minutes) pendant lesquelles le site
+montre le programme de démonstration. Les étapes 2 et 3 (base Neon,
+collecte sur GitHub Actions) règlent ce point.
 
 ---
 
