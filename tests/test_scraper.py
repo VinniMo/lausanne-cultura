@@ -9,12 +9,13 @@ from unittest import mock
 import scraper
 
 LISTING = """<html><body>
-<a href="/fr/evenement/midweek-jazz-jam/">Midweek Jazz Jam</a>
-<a href="/fr/evenement/midweek-jazz-jam/#infos">doublon</a>
-<a href="/fr/evenement/karaoke-open-mic">Karaoké</a>
-<a href="/fr/decouvrir/barberousse/">pas un événement</a>
-<a href="https://ailleurs.ch/fr/evenement/x">autre site</a>
+<a href="/fr/evenements/midweek-jazz-jam_Ab12/">Midweek Jazz Jam</a>
+<a href="/fr/evenements/midweek-jazz-jam_Ab12/#infos">doublon</a>
+<a href="/fr/evenements/karaoke-open-mic_Cd34">Karaoké</a>
+<a href="/fr/evenements/lausanne">pas un événement</a>
+<a href="https://ailleurs.ch/fr/evenements/x_Ef56">autre site</a>
 </body></html>"""
+GUIDLE = "https://www.guidle.com/fr/evenements/lausanne"
 
 
 def event_page(name, start, venue, offers=None, graph=False):
@@ -61,33 +62,32 @@ class IcsTest(unittest.TestCase):
 class DetailPagesTest(unittest.TestCase):
     def test_links_are_filtered_and_deduplicated(self):
         soup = scraper.BeautifulSoup(LISTING, "lxml")
-        links = scraper._detail_links(soup, "https://www.lausanne-tourisme.ch/fr/evenement/",
-                                      r"^/fr/evenement/[a-z0-9-]+/?$")
-        self.assertEqual(links, ["https://www.lausanne-tourisme.ch/fr/evenement/midweek-jazz-jam/",
-                                 "https://www.lausanne-tourisme.ch/fr/evenement/karaoke-open-mic"])
+        links = scraper._detail_links(soup, GUIDLE, r"^/fr/evenements/[^/]+_[A-Za-z0-9]+/?$")
+        self.assertEqual(links, ["https://www.guidle.com/fr/evenements/midweek-jazz-jam_Ab12/",
+                                 "https://www.guidle.com/fr/evenements/karaoke-open-mic_Cd34"])
 
     def test_listing_page_follows_event_pages(self):
         pages = {
-            "https://www.lausanne-tourisme.ch/fr/evenement/": LISTING,
-            "https://www.lausanne-tourisme.ch/fr/evenement/midweek-jazz-jam/":
+            GUIDLE: LISTING,
+            "https://www.guidle.com/fr/evenements/midweek-jazz-jam_Ab12/":
                 event_page("Midweek Jazz Jam", "2026-10-21T20:30:00+02:00", "Jumeaux Jazz Club"),
-            "https://www.lausanne-tourisme.ch/fr/evenement/karaoke-open-mic":
+            "https://www.guidle.com/fr/evenements/karaoke-open-mic_Cd34":
                 event_page("Karaoké & open mic", "2026-10-18T19:00:00+02:00", "Barberousse"),
         }
         with mock.patch.object(scraper, "_fetch", side_effect=lambda url: pages[url]):
-            events, method = scraper.scrape_one("https://www.lausanne-tourisme.ch/fr/evenement/")
+            events, method = scraper.scrape_one(GUIDLE)
         self.assertTrue(method.startswith("pages-detail"))
         self.assertEqual([e["location"] for e in events], ["Jumeaux Jazz Club", "Barberousse"])
 
     def test_failed_detail_page_is_skipped(self):
         def fetch(url):
-            if url.endswith("karaoke-open-mic"):
+            if url.endswith("karaoke-open-mic_Cd34"):
                 raise scraper.FetchError("404")
-            if url.endswith("/evenement/"):
+            if url == GUIDLE:
                 return LISTING
             return event_page("Midweek Jazz Jam", "2026-10-21T20:30:00+02:00", "Jumeaux Jazz Club")
         with mock.patch.object(scraper, "_fetch", side_effect=fetch):
-            events, _ = scraper.scrape_one("https://www.lausanne-tourisme.ch/fr/evenement/")
+            events, _ = scraper.scrape_one(GUIDLE)
         self.assertEqual(len(events), 1)
 
 

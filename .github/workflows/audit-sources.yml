@@ -9,6 +9,7 @@ on:
     paths:
       - config.py
       - scraper.py
+      - sources/**
       - tools/audit_sources.py
       - .github/workflows/audit-sources.yml
 
