@@ -208,10 +208,23 @@ Fait (pull request « Étape 1 ») :
 - Outil « Copies de pages » : GitHub Actions télécharge les pages des
   lieux, pour écrire les modules sans accès direct aux sites.
 
-Mesuré (audit GitHub Actions du 13 octobre, avant D! Club, MAD et
-Beaulieu) : **241 événements sur les sept prochains jours**, tous de
-Lausanne Tourisme. Lieu connu à 95 %, image 100 %, heure 23 %, prix 8 %
-(heure et prix ne sont lus que sur les fiches de la semaine).
+Mesuré (audit GitHub Actions du 13 octobre 2026, 14:23) :
+
+| | Valeur |
+|---|---:|
+| Sources qui donnent des événements à venir | 4 sur 22 |
+| Événements à venir, doublons fusionnés | 1 281 (145 doublons fusionnés) |
+| Dont sur les sept prochains jours | **234** (critère : 50) |
+
+| Source | 7 jours | Heure | Prix |
+|---|---:|---:|---:|
+| Lausanne Tourisme | 245 | 23 % | 8 % |
+| D! Club | 11 | 100 % | 0 % |
+| MAD | 6 | 0 % | 11 % |
+| Beaulieu | 2 | 0 % | 0 % |
+
+Chez Lausanne Tourisme, heure et prix ne sont lus que sur les fiches de la
+semaine ; au-delà, seule la date est connue.
 
 Reste, par ordre d'intérêt pour le public cible :
 
