@@ -1,35 +1,27 @@
 # Pages à copier par GitHub Actions (workflow « Copies de pages »).
-# Une adresse par ligne. Modifier ce fichier relance la copie.
+# Une adresse par ligne. Modifier ce fichier relance la copie ; les copies
+# déjà faites restent dans snapshots/.
 
-# Agendas regroupés
-https://www.lausanne-tourisme.ch/fr/evenement/
-https://www.lausanne-tourisme.ch/fr/evenement/stormy-4/
-https://www.lausanne-tourisme.ch/fr/evenement/d-club-30-th-anniversary-xaguada-2
-https://www.guidle.com/fr/evenements/lausanne
-https://www.lausanne.ch/
-https://plateforme10.ch/agenda
+# Lausanne Tourisme : fiches à période (récurrence ou exposition) et fiches simples
+https://www.lausanne-tourisme.ch/fr/evenement/water-pong/
+https://www.lausanne-tourisme.ch/fr/evenement/mardi-karaoke-night/
+https://www.lausanne-tourisme.ch/fr/evenement/soiree-entre-copains-karaocook-quizz/
+https://www.lausanne-tourisme.ch/fr/evenement/smash-it-le-quiz-show-interactif-au-basebar/
+https://www.lausanne-tourisme.ch/fr/evenement/edouard-chapallaz-ceramiste-suisse/
+https://www.lausanne-tourisme.ch/fr/evenement/baby-teeth-catol-teixeira/
+https://www.lausanne-tourisme.ch/fr/evenement/lausanne-underground-film-music-festival/
+https://www.lausanne-tourisme.ch/fr/evenement/insomnia-2/
+https://www.lausanne-tourisme.ch/fr/evenement/midweek-jazz-jam/
+https://www.lausanne-tourisme.ch/fr/evenement/blue-magic-zombidou-leo-blackout/
 
-# Titres trouvés, dates manquantes
-https://mad.ch/agenda
-https://www.theatre-octogone.ch/saison
-https://arsenic.ch/saison
-https://www.ocl.ch/concerts
-
-# Page agenda introuvable (404) : partir de l'accueil
-https://vidy.ch/
-https://lesdocks.ch/
-https://www.chorus.ch/
-https://dclub.ch/
-https://www.cinematheque.ch/
-https://zinema.ch/
-https://le-bourg.ch/
-https://www.le-bourg.ch/
-
-# Répondent, aucun événement reconnu
-https://tkm.ch/saison
-https://www.theatredebeaulieu.ch/programme
-https://www.opera-lausanne.ch/saison
-https://www.mcba.ch/expositions
-https://elysee.ch/expositions
-https://mudac.ch/expositions
-https://www.cinemabellevaux.ch/programme
+# Vraies pages agenda trouvées depuis l'accueil des lieux
+https://www.docks.ch/programme/
+https://dclub.ch/agenda/
+https://chorus.ch/programme/
+https://vidy.ch/fr/calendrier/
+https://www.lausanne.ch/agenda
+https://plateforme10.ch/agenda/?interval=week
+https://beaulieu-lausanne.com/agenda/?cat=theatre
+https://www.mcba.ch/agenda
+https://elysee.ch/agenda
+https://mudac.ch/agenda/
