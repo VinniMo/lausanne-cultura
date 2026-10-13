@@ -1,0 +1,35 @@
+# Pages à copier par GitHub Actions (workflow « Copies de pages »).
+# Une adresse par ligne. Modifier ce fichier relance la copie.
+
+# Agendas regroupés
+https://www.lausanne-tourisme.ch/fr/evenement/
+https://www.lausanne-tourisme.ch/fr/evenement/stormy-4/
+https://www.lausanne-tourisme.ch/fr/evenement/d-club-30-th-anniversary-xaguada-2
+https://www.guidle.com/fr/evenements/lausanne
+https://www.lausanne.ch/
+https://plateforme10.ch/agenda
+
+# Titres trouvés, dates manquantes
+https://mad.ch/agenda
+https://www.theatre-octogone.ch/saison
+https://arsenic.ch/saison
+https://www.ocl.ch/concerts
+
+# Page agenda introuvable (404) : partir de l'accueil
+https://vidy.ch/
+https://lesdocks.ch/
+https://www.chorus.ch/
+https://dclub.ch/
+https://www.cinematheque.ch/
+https://zinema.ch/
+https://le-bourg.ch/
+https://www.le-bourg.ch/
+
+# Répondent, aucun événement reconnu
+https://tkm.ch/saison
+https://www.theatredebeaulieu.ch/programme
+https://www.opera-lausanne.ch/saison
+https://www.mcba.ch/expositions
+https://elysee.ch/expositions
+https://mudac.ch/expositions
+https://www.cinemabellevaux.ch/programme
