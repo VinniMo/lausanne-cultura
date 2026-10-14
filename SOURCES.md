@@ -15,7 +15,7 @@ un format inconnu ne donne plus rien.
 
 | Source | Adresse | Format | Résultat | Limites |
 |---|---|---|---|---|
-| Lausanne Tourisme | https://www.lausanne-tourisme.ch/fr/evenement/ | Cartes HTML, toutes sur une page (lecteur `read_lausanne_tourisme`) | ~1 220 événements, ~200 lieux, dont bars et petits lieux (Jumeaux, Base Bar, Satellite, Barberousse, D! Club, MAD) | Ni heure ni prix dans la liste. Les rendez-vous réguliers sont donnés comme une période (« du 23.07 au 24.12 ») sans les jours de la semaine. Heure, jours et prix sont sur la fiche de chaque événement (`.js-openingHours[data-opening]`, bloc des prix) |
+| Lausanne Tourisme | https://www.lausanne-tourisme.ch/fr/evenement/ | Cartes HTML, toutes sur une page (`read_lausanne_tourisme`), complétées par la fiche de chaque événement (`read_lausanne_tourisme_page`) | ~1 220 événements, ~200 lieux, dont bars et petits lieux (Jumeaux, Base Bar, Satellite, Barberousse, D! Club, MAD) | La liste ne donne ni heure ni prix, et une série (« chaque jeudi », « 8 dates ») y apparaît comme une période. Les fiches donnent les jours, l'heure, le prix et l'adresse : elles sont lues au fil des collectes (voir plus bas). Tant qu'une fiche n'est pas lue, l'événement s'affiche sur toute sa période, sans heure. Les fiches de la Cinémathèque donnent les horaires du lieu, pas l'heure des séances |
 | OCL | https://www.ocl.ch/wp-content/uploads/2026/05/OCL_2026-2027_Saison_Complete.ics | Calendrier iCal | 47 concerts avec heure et lieu | Le nom du fichier change à chaque saison. Ni image, ni prix, ni les concerts en collaboration |
 
 Lausanne Tourisme utilise la même base de données que l'agenda de la Ville
@@ -70,9 +70,21 @@ Les protections anti-robot ne sont pas contournées : Resident Advisor et
 Shotgun, très utiles pour les soirées, demanderaient un accord ou une API
 officielle.
 
+## Fiches détaillées de Lausanne Tourisme
+
+- Chaque collecte lit au plus 150 fiches (`DETAIL_PAGES_PER_RUN`), avec une
+  pause d'une seconde entre deux fiches (`DETAIL_PAUSE`) : environ 4 minutes.
+- Ordre de lecture : d'abord les fiches jamais lues, de l'événement le plus
+  proche au plus lointain, puis celles lues il y a plus de 7 jours
+  (`DETAIL_MAX_AGE_DAYS`).
+- Une fiche lue est gardée en base (table `page_details`) et réutilisée.
+- Le premier remplissage prend une dizaine de collectes ; les jours à venir
+  sont complets dès la première.
+- Le `robots.txt` de Lausanne Tourisme autorise ces pages et ne demande pas
+  de délai.
+
 ## Règles de politesse
 
-Beaucoup de ces sites demandent dans leur `robots.txt` d'attendre 10
-secondes entre deux pages (`Crawl-delay: 10`). Le programme lit aujourd'hui
-une seule page par source et par heure, ce qui reste dans ces limites ; il
-faudra espacer les requêtes dès qu'un lecteur suivra des fiches détaillées.
+Beaucoup des autres sites demandent dans leur `robots.txt` d'attendre 10
+secondes entre deux pages (`Crawl-delay: 10`). Un lecteur qui suivra leurs
+fiches détaillées devra respecter ce délai.

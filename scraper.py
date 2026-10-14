@@ -23,7 +23,8 @@ import hashlib
 import json
 import logging
 import re
-from datetime import datetime
+import time
+from datetime import date, datetime
 from zoneinfo import ZoneInfo
 from typing import Iterable
 from urllib.parse import urljoin, urlparse
@@ -353,8 +354,8 @@ def read_lausanne_tourisme(text: str, page_url: str) -> list[dict]:
     """Event cards of www.lausanne-tourisme.ch/fr/evenement/ (all on one page).
 
     A card gives title, teaser, date ("01.11.2026") or range ("27.05.2026 -
-    16.12.2026"), venue, image and link. Time and price are only on each
-    event's own page and are not read here.
+    16.12.2026"), venue, image and link. Days, time and price are only on
+    each event's own page (add_lausanne_tourisme_details).
     """
     soup = BeautifulSoup(text, "lxml")
     events: list[dict] = []
@@ -381,9 +382,118 @@ def read_lausanne_tourisme(text: str, page_url: str) -> list[dict]:
     return events
 
 
+def _lt_time(hhmm: str) -> str:
+    return f"{hhmm[:2]}:{hhmm[2:]}" if len(hhmm) == 4 and hhmm.isdigit() else ""
+
+
+_CHF = re.compile(r"(\d+(?:[.,]\d+)?)\s*CHF|CHF\s*(\d+(?:[.,]\d+)?)", re.IGNORECASE)
+
+
+def _lt_price(soup: BeautifulSoup) -> str:
+    """"CHF 14–28", "CHF 25", "Gratuit" or "" from the page's price tab.
+
+    When some prices are free (children) and others are not, the paid
+    range is given: the event is not shown as free.
+    """
+    values = [_text(p) for p in soup.select("[x-show*=prices] p")]
+    amounts = sorted(float(n.replace(",", ".")) for v in values for pair in _CHF.findall(v) for n in pair if n)
+    if amounts:
+        low, high = f"{amounts[0]:g}", f"{amounts[-1]:g}"
+        return f"CHF {low}" if low == high else f"CHF {low}–{high}"
+    if values and all("gratuit" in fold(v) for v in values):
+        return "Gratuit"
+    return ""
+
+
+def read_lausanne_tourisme_page(text: str) -> dict:
+    """Schedule, price and address on a lausanne-tourisme.ch event page.
+
+    Each opening block covers one date or a range ("starts"/"ends", epoch
+    seconds) and gives start times by weekday (0 = Sunday on the site). The
+    schedule keeps, per block, its first and last day and the start times
+    by weekday, 0 = Monday as in Python; empty times mean every day of the
+    block, time unknown.
+    """
+    soup = BeautifulSoup(text, "lxml")
+    schedule = []
+    for node in soup.select(".section--practical .js-openingHours[data-opening]"):
+        try:
+            block = json.loads(node["data-opening"])
+            first = datetime.fromtimestamp(int(block["starts"]), LOCAL_TZ).date()
+            last = datetime.fromtimestamp(int(block["ends"]), LOCAL_TZ).date()
+            openings = [(str((int(o["day"]) - 1) % 7), str(o.get("from") or ""))
+                        for o in block.get("openings") or []]
+        except (ValueError, KeyError, TypeError):
+            continue
+        times: dict[str, list[str]] = {}
+        for day, start in openings:
+            if start == "0000":  # the night before, going on past midnight
+                continue
+            times.setdefault(day, [])
+            if _lt_time(start) not in times[day]:
+                times[day].append(_lt_time(start))
+        if first == last:
+            # A single date with hours for many weekdays: these are the
+            # venue's opening hours, not the event's time.
+            day = str(first.weekday())
+            times = {day: times[day]} if day in times and len(times) <= 2 else {}
+        schedule.append({"from": first.isoformat(), "to": last.isoformat(),
+                         "times": {day: sorted(t) for day, t in times.items()}})
+
+    place = soup.select_one(".section--practical .address")
+    lines = [t.strip() for t in place.find_all(string=True, recursive=False) if t.strip()] if place else []
+    return {"schedule": schedule, "price": _lt_price(soup), "address": ", ".join(lines[1:])}
+
+
+def _listed_day(evt: dict, today: date) -> date:
+    """When the listing says an event is next on (undated events last)."""
+    try:
+        return max(date.fromisoformat(evt["date"]), today)
+    except ValueError:
+        return date.max
+
+
+def add_lausanne_tourisme_details(events: list[dict], listing_url: str) -> list[dict]:
+    """Complete listed events with what their own page says, read politely.
+
+    Saved pages are reused. Pages never read, then pages older than
+    DETAIL_MAX_AGE_DAYS, are read soonest event first, at most
+    DETAIL_PAGES_PER_RUN per collection, with a pause between pages: the
+    first collections fill the next days first. An event whose page is not
+    read yet keeps what the listing gives.
+    """
+    saved = db.get_details([e["url"] for e in events])
+    too_old = time.time() - config.DETAIL_MAX_AGE_DAYS * 86400
+    today = today_local()
+    due = [e for e in events if e["url"] != listing_url
+           and (e["url"] not in saved or saved[e["url"]][0] < too_old)]
+    due.sort(key=lambda e: (e["url"] in saved, _listed_day(e, today)))
+    for done, evt in enumerate(due[: config.DETAIL_PAGES_PER_RUN]):
+        if done:
+            time.sleep(config.DETAIL_PAUSE_SECONDS)
+        try:
+            data = read_lausanne_tourisme_page(_fetch(evt["url"]))
+        except FetchError as exc:
+            logger.warning("Event page failed %s: %s", evt["url"], exc)
+            continue
+        db.save_details(evt["url"], data)
+        saved[evt["url"]] = (time.time(), data)
+
+    for evt in events:
+        data = saved.get(evt["url"], (0.0, {}))[1]
+        for field in ("schedule", "price", "address"):
+            if data.get(field):
+                evt[field] = data[field]
+    return events
+
+
+def collect_lausanne_tourisme(text: str, page_url: str) -> list[dict]:
+    return add_lausanne_tourisme_details(read_lausanne_tourisme(text, page_url), page_url)
+
+
 # Sites read with their own rules: domain -> reader(page text, page URL).
 SITE_READERS = {
-    "lausanne-tourisme.ch": read_lausanne_tourisme,
+    "lausanne-tourisme.ch": collect_lausanne_tourisme,
 }
 
 

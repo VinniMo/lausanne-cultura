@@ -31,7 +31,7 @@ L'agenda officiel de la Ville (agenda.lausanne.ch) a un registre très classique
 - Les événements sont collectés automatiquement (scraping). Source principale : l'agenda de Lausanne Tourisme (environ 1 200 événements dans quelque 200 lieux, bars et petits lieux compris), complété par le calendrier de l'OCL. Liste dans `config.py` ; état de toutes les sources auditées dans `SOURCES.md`.
 - La collecte se relance au plus une fois par heure, quand quelqu'un consulte le site ; elle peut aussi être forcée via `/api/refresh`.
 - Chaque événement est classé automatiquement dans un thème : d'abord par son lieu quand celui-ci a un programme d'un seul genre (Cinémathèque, Docks, D! Club…), sinon par mots-clés. En cas de doute, il tombe dans « Culture ».
-- La qualité des données collectées varie selon la source : prix souvent absent, horaire, image ou adresse parfois manquants, lieu parfois réduit à « Lausanne ». Lausanne Tourisme ne donne ni heure ni prix dans sa liste, et indique les rendez-vous réguliers comme une période sans les jours de la semaine. L'interface doit fonctionner avec des fiches incomplètes.
+- La qualité des données collectées varie selon la source : prix souvent absent, horaire, image ou adresse parfois manquants, lieu parfois réduit à « Lausanne ». Lausanne Tourisme ne donne ni heure ni prix dans sa liste : jours, heure et prix sont lus sur la fiche de chaque événement, quelques-unes par collecte, les plus proches d'abord ; tant qu'une fiche n'est pas lue, l'événement s'affiche sur toute sa période, sans heure. L'interface doit fonctionner avec des fiches incomplètes.
 
 ## Capabilities and Constraints
 

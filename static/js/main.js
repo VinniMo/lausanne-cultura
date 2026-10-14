@@ -98,8 +98,10 @@
         let masked = 0;
         const shown = [];
         for (const id of block.ids) {
-            const evt = state.byId.get(id);
-            if (!evt) continue;
+            const base = state.byId.get(id);
+            if (!base) continue;
+            // An event on several days can start at a different time each day.
+            const evt = block.times && id in block.times ? { ...base, time: block.times[id] } : base;
             if (state.cheap && !isSmallPrice(evt)) continue;
             const m = isMasked(evt);
             if (m) masked += 1;
@@ -457,6 +459,12 @@
     function whenText(evt) {
         if (!evt.date) return h('span', { class: 'nc' }, 'Date non communiquée');
         const multi = evt.end_date && evt.end_date !== evt.date;
+        if (multi && evt.next_date) {
+            // Days known from the event's page: name the next one, not the whole range.
+            const next = dayLabel(evt.next_date);
+            return [next.charAt(0).toUpperCase() + next.slice(1),
+                h('small', {}, `${evt.time ? `À ${evt.time}` : 'Heure non communiquée'} · autres dates jusqu'au ${shortFmt.format(parseDay(evt.end_date))}`)];
+        }
         const dates = multi
             ? `Du ${shortFmt.format(parseDay(evt.date))} au ${shortFmt.format(parseDay(evt.end_date))}`
             : dayLabel(evt.date);
@@ -516,7 +524,8 @@
 
     async function share(evt) {
         const url = `${location.origin}${location.pathname}#e=${encodeURIComponent(evt.id)}`;
-        const when = evt.date ? `${dayLabel(evt.date)}${evt.time ? ` à ${evt.time}` : ''}` : '';
+        const day = evt.next_date || evt.date;
+        const when = day ? `${dayLabel(day)}${evt.time ? ` à ${evt.time}` : ''}` : '';
         const text = [evt.title, [when, hasVenue(evt) ? evt.location : ''].filter(Boolean).join(', ')].filter(Boolean).join(' · ');
         if (navigator.share) {
             try { await navigator.share({ title: evt.title, text, url }); return; } catch (err) {

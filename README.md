@@ -45,7 +45,7 @@ sont décrites dans [SOURCES.md](SOURCES.md).
 | GET     | `/`               | Application                                   |
 | GET     | `/api/events`     | Liste filtrable (`?category=…&search=…`)      |
 | GET     | `/api/categories` | Catégories disponibles + comptes              |
-| GET/POST| `/api/refresh`    | Force un scrape immédiat                      |
+| GET/POST| `/api/refresh`    | Lance une collecte en arrière-plan            |
 | GET     | `/api/sources`    | Diagnostic : état et nombre d'événements par source |
 | GET     | `/api/health`     | Statut + nombre d'événements + dernier scrape |
 
@@ -80,6 +80,9 @@ Pas besoin d'API key GitHub CLI — tout est piloté par
 | `LAUSANNE_DB`     | `./events.db`  | Chemin SQLite                     |
 | `SCRAPE_INTERVAL` | `3600`         | TTL du cache scraping (secondes)  |
 | `SCRAPE_TIMEOUT`  | `12`           | Timeout HTTP du scraper           |
+| `DETAIL_PAGES_PER_RUN` | `150`     | Fiches d'événement lues par collecte (jours, heure, prix) |
+| `DETAIL_PAUSE`    | `1`            | Pause entre deux fiches (secondes) |
+| `DETAIL_MAX_AGE_DAYS` | `7`        | Âge au-delà duquel une fiche est relue |
 
 ## Design
 

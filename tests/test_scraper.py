@@ -145,18 +145,116 @@ LT_PAGE = "<html><main>" + "".join([
 ]) + "</main></html>"
 
 
+LT_LISTING = "https://www.lausanne-tourisme.ch/fr/evenement/"
+
+
+def epoch(day):
+    """Midnight in Lausanne, as the event pages write their dates."""
+    return str(int(scraper.datetime.fromisoformat(day).replace(tzinfo=scraper.LOCAL_TZ).timestamp()))
+
+
+def lt_event_page(blocks, prices=(), address=("Etoile Blanche", "Avenue du Tribunal-Fédéral 1", "1003 Lausanne")):
+    openings = "".join(
+        f"""<div class="js-openingHours" data-opening='{json.dumps({"starts": epoch(a), "ends": epoch(b), "openings": o})}'></div>"""
+        for a, b, o in blocks)
+    tab = "<div x-show=\"tab === 'prices'\">" + "".join(f"<h4>{k}</h4><p>{v}</p>" for k, v in prices) + "</div>"
+    place = (f'<div class="address">{"<br/>".join(address)}<p><a class="btn--geoposition">Itinéraire</a></p></div>'
+             if address else "")
+    return f'<html><div class="section section--practical">{place}{openings}{tab}</div></html>'
+
+
 class LausanneTourismeTest(unittest.TestCase):
     def test_cards_give_dates_ranges_venues_and_links(self):
-        with mock.patch.object(scraper, "_fetch", return_value=LT_PAGE):
-            events, method, complete = scraper.scrape_one("https://www.lausanne-tourisme.ch/fr/evenement/")
-        self.assertEqual((method, complete), ("lecteur lausanne-tourisme.ch", True))
-        film, expo, karaoke, undated = events  # the card without a title is skipped
+        film, expo, karaoke, undated = scraper.read_lausanne_tourisme(LT_PAGE, LT_LISTING)  # no title: skipped
         self.assertEqual((film["date"], film["end_date"], film["location"]), ("2026-11-01", "", "Cinémathèque suisse"))
         self.assertEqual(film["category"], "Cinéma")  # the venue wins over "famille"
         self.assertEqual(film["url"], "https://www.lausanne-tourisme.ch/fr/evenement/monsoon-wedding/")
         self.assertEqual((expo["date"], expo["end_date"]), ("2026-05-27", "2026-12-16"))
         self.assertEqual((karaoke["location"], karaoke["time"], karaoke["price"]), ("", "", ""))
         self.assertEqual(undated["date"], "")
+
+    def test_listing_url_uses_the_site_reader(self):
+        with mock.patch.object(scraper, "_fetch", return_value=LT_PAGE), \
+                mock.patch.object(scraper, "add_lausanne_tourisme_details", side_effect=lambda events, url: events):
+            events, method, complete = scraper.scrape_one(LT_LISTING)
+        self.assertEqual((len(events), method, complete), (4, "lecteur lausanne-tourisme.ch", True))
+
+
+class LausanneTourismePageTest(unittest.TestCase):
+    def read(self, *blocks, **page):
+        return scraper.read_lausanne_tourisme_page(lt_event_page(blocks, **page))
+
+    def test_weekly_range_price_and_address(self):
+        page = self.read(("2026-07-23", "2026-12-24", [{"day": 4, "from": "1800", "until": "2030"}]),
+                         prices=[("prix minimum", "Gratuit")])
+        self.assertEqual(page, {
+            "schedule": [{"from": "2026-07-23", "to": "2026-12-24", "times": {"3": ["18:00"]}}],  # Thursday
+            "price": "Gratuit",
+            "address": "Avenue du Tribunal-Fédéral 1, 1003 Lausanne",
+        })
+
+    def test_several_dates_keep_their_own_times(self):
+        page = self.read(("2026-11-24", "2026-11-24", [{"day": 2, "from": "2000", "until": ""}]),
+                         ("2026-11-29", "2026-11-29", [{"day": 0, "from": "1400", "until": ""}]))
+        self.assertEqual([b["times"] for b in page["schedule"]], [{"1": ["20:00"]}, {"6": ["14:00"]}])
+
+    def test_club_night_going_past_midnight_is_one_date(self):
+        page = self.read(("2026-10-24", "2026-10-24", [{"day": 6, "from": "2300", "until": "2359"},
+                                                       {"day": 0, "from": "0000", "until": "0500"}]))
+        self.assertEqual(page["schedule"][0]["times"], {"5": ["23:00"]})
+
+    def test_venue_opening_hours_on_a_single_date_give_no_time(self):
+        week = [{"day": d, "from": "1400", "until": "2300"} for d in range(1, 7)]
+        page = self.read(("2026-11-01", "2026-11-01", week))  # a Sunday, at the Cinémathèque
+        self.assertEqual(page["schedule"], [{"from": "2026-11-01", "to": "2026-11-01", "times": {}}])
+
+    def test_prices(self):
+        cases = {
+            (("Plein tarif, dès", "28 CHF"), ("Moins de 16 ans, dès", "14 CHF")): "CHF 14–28",
+            (("Tarif unique", "25 CHF"),): "CHF 25",
+            (("Enfants", "Gratuit"), ("Adultes", "20 CHF")): "CHF 20",  # not shown as free
+            (): "",
+        }
+        for prices, expected in cases.items():
+            with self.subTest(prices=prices):
+                self.assertEqual(self.read(prices=prices)["price"], expected)
+
+    def test_page_without_practical_section(self):
+        self.assertEqual(scraper.read_lausanne_tourisme_page("<html></html>"),
+                         {"schedule": [], "price": "", "address": ""})
+
+
+class LausanneTourismeDetailsTest(unittest.TestCase):
+    """Event pages are read soonest first, a few per collection, and kept."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        settings = dataclasses.replace(scraper.config, DETAIL_PAGES_PER_RUN=2, DETAIL_PAUSE_SECONDS=0)
+        for patcher in (mock.patch.object(db, "DB_PATH", os.path.join(tmp.name, "events.db")),
+                        mock.patch.object(scraper, "config", settings),
+                        mock.patch.object(scraper, "today_local", return_value=scraper.date(2026, 10, 13))):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        db.init_db()
+        self.fetched = []
+
+    def collect(self):
+        def fetch(url):
+            self.fetched.append(url.rstrip("/").rsplit("/", 1)[-1])
+            return lt_event_page([("2026-10-18", "2026-10-18", [{"day": 0, "from": "1900", "until": ""}])],
+                                 prices=[("Tarif unique", "12 CHF")])
+        with mock.patch.object(scraper, "_fetch", side_effect=fetch):
+            return scraper.add_lausanne_tourisme_details(scraper.read_lausanne_tourisme(LT_PAGE, LT_LISTING), LT_LISTING)
+
+    def test_soonest_first_then_saved_pages_are_reused(self):
+        events = self.collect()
+        self.assertEqual(self.fetched, ["giacometti", "karaoké"])  # running now, then 18.10
+        self.assertEqual([e["price"] for e in events], ["", "CHF 12", "CHF 12", ""])
+        self.fetched.clear()
+        events = self.collect()
+        self.assertEqual(self.fetched, ["monsoon-wedding", "fête-sans-date"])  # only the pages not read yet
+        self.assertEqual([e["price"] for e in events], ["CHF 12"] * 4)
 
 
 class DuplicatesTest(unittest.TestCase):
@@ -240,6 +338,25 @@ AGENDA = "https://agenda.ch/lausanne"
 
 def show(id_, day="2026-10-20"):
     return {"id": id_, "title": id_, "date": day}
+
+
+class DatabaseUpgradeTest(unittest.TestCase):
+    def test_database_from_before_schedules_gets_the_column(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        path = os.path.join(tmp.name, "old.db")
+        with mock.patch.object(db, "DB_PATH", path):
+            with db.get_conn() as conn:
+                conn.execute("CREATE TABLE events (id TEXT PRIMARY KEY, title TEXT, date TEXT, time TEXT,"
+                             " end_date TEXT, location TEXT, address TEXT, category TEXT, subcategory TEXT,"
+                             " description TEXT, image TEXT, price TEXT, url TEXT, tags TEXT,"
+                             " featured INTEGER, source TEXT, scraped_at REAL, updated_at REAL)")
+                conn.execute("INSERT INTO events (id, title, date) VALUES ('old', 'Ancien', '2026-10-20')")
+            db.init_db()
+            db.upsert_event({"id": "new", "title": "Nouveau", "date": "2026-10-21",
+                             "schedule": [{"from": "2026-10-21", "to": "2026-10-21", "times": {}}]})
+            stored = {e["id"]: e["schedule"] for e in db.list_all_events()}
+        self.assertEqual(stored, {"old": [], "new": [{"from": "2026-10-21", "to": "2026-10-21", "times": {}}]})
 
 
 class RefreshTest(unittest.TestCase):

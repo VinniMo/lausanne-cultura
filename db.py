@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS events (
     price       TEXT,
     url         TEXT,
     tags        TEXT,
+    schedule    TEXT DEFAULT '',
     featured    INTEGER DEFAULT 0,
     source      TEXT DEFAULT 'fallback',
     scraped_at  REAL,
@@ -36,6 +37,14 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE INDEX IF NOT EXISTS idx_events_category ON events(category);
 CREATE INDEX IF NOT EXISTS idx_events_date     ON events(date);
 CREATE INDEX IF NOT EXISTS idx_events_featured ON events(featured);
+
+-- What an event's own page adds to a listing (time, days, price, address),
+-- kept so that each page is read again only when it gets old.
+CREATE TABLE IF NOT EXISTS page_details (
+    url        TEXT PRIMARY KEY,
+    data       TEXT,
+    checked_at REAL
+);
 
 CREATE TABLE IF NOT EXISTS scrape_log (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -65,6 +74,9 @@ def init_db() -> None:
     """Create tables and indexes if they don't exist."""
     with get_conn() as conn:
         conn.executescript(SCHEMA)
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(events)")}
+        if "schedule" not in columns:  # databases created before schedules
+            conn.execute("ALTER TABLE events ADD COLUMN schedule TEXT DEFAULT ''")
 
 
 def upsert_event(evt: dict, source: str = "scraper") -> None:
@@ -75,26 +87,27 @@ def upsert_event(evt: dict, source: str = "scraper") -> None:
     """
     now = time.time()
     tags = json.dumps(evt.get("tags", []), ensure_ascii=False)
+    schedule = json.dumps(evt["schedule"]) if evt.get("schedule") else ""
     with get_conn() as conn:
         conn.execute("""
             INSERT INTO events (id, title, date, time, end_date, location, address,
                                 category, subcategory, description, image, price, url,
-                                tags, featured, source, scraped_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                tags, schedule, featured, source, scraped_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 title=excluded.title, date=excluded.date, time=excluded.time,
                 end_date=excluded.end_date, location=excluded.location,
                 address=excluded.address, category=excluded.category,
                 subcategory=excluded.subcategory, description=excluded.description,
                 image=excluded.image, price=excluded.price, url=excluded.url,
-                tags=excluded.tags, featured=excluded.featured,
+                tags=excluded.tags, schedule=excluded.schedule, featured=excluded.featured,
                 source=excluded.source, updated_at=excluded.updated_at
         """, (
             evt.get("id"), evt.get("title", ""), evt.get("date", ""),
             evt.get("time", ""), evt.get("end_date", ""), evt.get("location", ""),
             evt.get("address", ""), evt.get("category", ""), evt.get("subcategory", ""),
             evt.get("description", ""), evt.get("image", ""), evt.get("price", ""),
-            evt.get("url", ""), tags, 1 if evt.get("featured") else 0,
+            evt.get("url", ""), tags, schedule, 1 if evt.get("featured") else 0,
             evt.get("source") or source, now, now,
         ))
 
@@ -111,6 +124,10 @@ def row_to_dict(row: sqlite3.Row) -> dict:
         d["tags"] = json.loads(d.get("tags") or "[]")
     except Exception:
         d["tags"] = []
+    try:
+        d["schedule"] = json.loads(d.get("schedule") or "[]")
+    except Exception:
+        d["schedule"] = []
     d["featured"] = bool(d.get("featured"))
     return d
 
@@ -168,6 +185,30 @@ def delete_unannounced(source: str, announced: set[str]) -> int:
         gone = [(r["id"],) for r in rows if r["id"] not in announced]
         conn.executemany("DELETE FROM events WHERE id = ?", gone)
     return len(gone)
+
+
+def get_details(urls: list[str]) -> dict[str, tuple[float, dict]]:
+    """Saved page details by URL: (time they were read, data)."""
+    found: dict[str, tuple[float, dict]] = {}
+    with get_conn() as conn:
+        for start in range(0, len(urls), 500):  # SQLite caps the number of ? per query
+            chunk = urls[start:start + 500]
+            rows = conn.execute(
+                f"SELECT url, data, checked_at FROM page_details WHERE url IN ({','.join('?' * len(chunk))})",
+                chunk,
+            ).fetchall()
+            for row in rows:
+                found[row["url"]] = (row["checked_at"], json.loads(row["data"] or "{}"))
+    return found
+
+
+def save_details(url: str, data: dict) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT INTO page_details (url, data, checked_at) VALUES (?, ?, ?)"
+            " ON CONFLICT(url) DO UPDATE SET data=excluded.data, checked_at=excluded.checked_at",
+            (url, json.dumps(data, ensure_ascii=False), time.time()),
+        )
 
 
 def list_categories() -> list[dict]:

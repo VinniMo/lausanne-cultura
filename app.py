@@ -65,19 +65,28 @@ def _refresh_in_background() -> None:
         _refresh_lock.release()
 
 
+def start_refresh() -> bool:
+    """Start a collection in the background, unless one is running.
+
+    A collection reads event pages with pauses and can take minutes: it
+    never runs inside a request. Returns whether one was started.
+    """
+    if not _refresh_lock.acquire(blocking=False):
+        return False  # a collection is already running in this process
+    threading.Thread(target=_refresh_in_background, daemon=True).start()
+    return True
+
+
 def maybe_refresh_from_scraper() -> None:
-    """Start a collection in the background when the last attempt is old.
+    """Start a collection when the last attempt is old.
 
     Visitors are served the data already stored; they never wait for the
     sources. Any attempt counts, so failing sources are retried at most
     once per interval rather than on every page view.
     """
     age = time.time() - db.last_scrape_time()
-    if age < config.SCRAPE_INTERVAL_SECONDS:
-        return
-    if not _refresh_lock.acquire(blocking=False):
-        return  # a collection is already running in this process
-    threading.Thread(target=_refresh_in_background, daemon=True).start()
+    if age >= config.SCRAPE_INTERVAL_SECONDS:
+        start_refresh()
 
 
 def _check_auth(username: str, password: str) -> bool:
@@ -158,16 +167,14 @@ def create_app() -> Flask:
 
     @app.route("/api/refresh", methods=["POST", "GET"])
     def api_refresh():
-        try:
-            count = scraper.refresh_database()
-            return jsonify({
-                "ok": True,
-                "scraped": count,
-                "total": db.count_events(),
-            })
-        except Exception as exc:
-            logger.exception("Manual refresh failed")
-            return jsonify({"ok": False, "error": str(exc)}), 500
+        """Start a collection now; /api/sources shows how it went."""
+        started = start_refresh()
+        return jsonify({
+            "ok": True,
+            "started": started,
+            "message": "Collecte lancée" if started else "Une collecte est déjà en cours",
+            "total": db.count_events(),
+        })
 
     @app.route("/api/sources")
     def api_sources():

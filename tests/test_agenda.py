@@ -47,10 +47,43 @@ class ProgrammeTest(unittest.TestCase):
         counts = {m["key"]: m["count"] for m in p["moments"]}
         self.assertEqual(counts, {"tonight": 3, "tomorrow": 1, "weekend": 1, "later": 2})
 
+    def test_weekly_schedule_shows_only_on_its_weekday(self):
+        # Every Thursday at 18:00 from July to December (read on the event's page).
+        thursdays = evt("afterwork", "2026-07-23", end="2026-12-24")
+        thursdays["schedule"] = [{"from": "2026-07-23", "to": "2026-12-24", "times": {"3": ["18:00"]}}]
+        p = agenda.build_programme([thursdays], MONDAY)
+        self.assertEqual([ids(p, k) for k in ("tonight", "tomorrow", "weekend")], [[], [], []])
+        later = next(m for m in p["moments"] if m["key"] == "later")
+        self.assertEqual(later["days"], [{"date": "2026-10-15", "ids": ["afterwork"], "times": {"afterwork": "18:00"}}])
+        [event] = p["events"]
+        self.assertEqual((event["next_date"], event["time"]), ("2026-10-15", "18:00"))
+        self.assertNotIn("schedule", event)
+
+    def test_dates_of_a_schedule_keep_their_own_times(self):
+        show = evt("lambiel", "2026-10-13", end="2026-10-18")
+        show["schedule"] = [{"from": "2026-10-13", "to": "2026-10-13", "times": {"1": ["20:00"]}},
+                            {"from": "2026-10-18", "to": "2026-10-18", "times": {"6": ["14:00"]}}]
+        p = agenda.build_programme([show], MONDAY)
+        days = {m["key"]: m["days"] for m in p["moments"]}
+        self.assertEqual(days["tonight"], [])
+        self.assertEqual(days["tomorrow"][0]["times"], {"lambiel": "20:00"})
+        self.assertEqual(days["weekend"], [{"date": "2026-10-18", "ids": ["lambiel"], "times": {"lambiel": "14:00"}}])
+
+    def test_schedule_without_times_keeps_the_day_and_an_unknown_time(self):
+        film = evt("film", "2026-10-12")
+        film["schedule"] = [{"from": "2026-10-12", "to": "2026-10-12", "times": {}}]
+        p = agenda.build_programme([film], MONDAY)
+        self.assertEqual(next(m for m in p["moments"] if m["key"] == "tonight")["days"][0]["times"], {"film": ""})
+
+    def test_schedule_over_before_the_listed_end_is_past(self):
+        series = evt("series", "2026-09-01", end="2026-12-31")
+        series["schedule"] = [{"from": "2026-09-01", "to": "2026-09-01", "times": {"1": ["19:00"]}}]
+        self.assertEqual(agenda.build_programme([series], MONDAY)["events"], [])
+
     def test_undated_events_are_kept_last_in_later(self):
         p = agenda.build_programme([evt("x", "")], MONDAY)
         later = next(m for m in p["moments"] if m["key"] == "later")
-        self.assertEqual(later["days"], [{"date": None, "ids": ["x"]}])
+        self.assertEqual(later["days"], [{"date": None, "ids": ["x"], "times": {"x": ""}}])
 
     def test_today_uses_swiss_time(self):
         # 23:30 UTC on Sunday is already Monday 01:30 in Lausanne.

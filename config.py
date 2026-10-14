@@ -42,6 +42,13 @@ class Config:
     DETAIL_LINK_PATTERNS: tuple[tuple[str, str], ...] = ()
     MAX_DETAIL_PAGES: int = int(os.environ.get("MAX_DETAIL_PAGES", "40"))
 
+    # Event pages that complete a listing (days, time, price, address):
+    # read soonest events first, a few per collection, with a pause between
+    # pages, and read again once they are older than DETAIL_MAX_AGE_DAYS.
+    DETAIL_PAGES_PER_RUN: int = int(os.environ.get("DETAIL_PAGES_PER_RUN", "150"))
+    DETAIL_PAUSE_SECONDS: float = float(os.environ.get("DETAIL_PAUSE", "1"))
+    DETAIL_MAX_AGE_DAYS: int = int(os.environ.get("DETAIL_MAX_AGE_DAYS", "7"))
+
     # ----- Tier 2: venue-specific (complete the aggregators) -----
     # Listed after the aggregators: when both give the same event, the
     # venue's version is kept.
