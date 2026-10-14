@@ -2,10 +2,14 @@
 
 Strategy, for each configured source URL:
     1. iCalendar feed (BEGIN:VCALENDAR): read its VEVENT entries.
-    2. JSON-LD structured data (schema.org/Event variants) on the page.
-    3. Listing pages of known aggregators (config.DETAIL_LINK_PATTERNS):
+    2. Sites with their own reader (SITE_READERS): read the page with the
+       rules written for that site.
+    3. JSON-LD structured data (schema.org/Event variants) on the page.
+    4. Listing pages of known aggregators (config.DETAIL_LINK_PATTERNS):
        follow the links to each event page and read its JSON-LD.
-    4. Fall back to HTML heuristics.
+A page in none of these formats gives no event: guessing events from the
+page layout produced menus and headings without dates. SOURCES.md lists
+which sources use which format, and those still waiting for a reader.
 
 Every source run is logged with the method used and the number of events
 found, so /api/sources can show which sources actually work.
@@ -25,7 +29,7 @@ from typing import Iterable
 from urllib.parse import urljoin, urlparse
 
 import requests
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup
 
 from agenda import fold, today_local
 from config import config
@@ -72,6 +76,19 @@ CATEGORY_RULES: dict[str, tuple[str, ...]] = {
 # Expressions that contain a keyword but mean something else.
 IGNORED_EXPRESSIONS: tuple[str, ...] = ("pop-up",)
 
+# Venues whose programme is of one kind decide the theme before any keyword:
+# a film at the Cinémathèque stays a film even when its summary says
+# "famille" or "rock". Venues with a mixed programme are left out.
+VENUE_RULES: dict[str, tuple[str, ...]] = {
+    "Clubbing":  ("d! club", "mad", "folklor", "base bar", "barberousse"),
+    "Cinéma":    ("cinémathèque", "cinéma", "zinéma", "pathé"),
+    "Musique":   ("les docks", "le romandie", "jumeaux jazz club", "chorus",
+                  "satellite", "bcv concert hall", "hemu", "opéra de lausanne"),
+    "Théâtre":   ("vidy", "arsenic", "kléber-méleau", "théâtre 2.21", "pulloff",
+                  "petit théâtre", "café théâtre"),
+    "Exposition": ("musée", "photo elysée", "mudac", "mcba", "plateforme 10"),
+}
+
 
 def _keyword_pattern(keywords: Iterable[str]) -> re.Pattern:
     """Whole words or phrases, accent-free, with an optional plural s or x."""
@@ -80,6 +97,7 @@ def _keyword_pattern(keywords: Iterable[str]) -> re.Pattern:
 
 
 _CATEGORY_PATTERNS = [(cat, _keyword_pattern(kws)) for cat, kws in CATEGORY_RULES.items()]
+_VENUE_PATTERNS = [(cat, _keyword_pattern(kws)) for cat, kws in VENUE_RULES.items()]
 _IGNORED_PATTERN = _keyword_pattern(IGNORED_EXPRESSIONS)
 
 
@@ -87,7 +105,11 @@ def _gen_id(title: str, date: str) -> str:
     return hashlib.md5(f"{title}|{date}".encode("utf-8")).hexdigest()[:10]
 
 
-def categorize(title: str, description: str = "") -> str:
+def categorize(title: str, description: str = "", venue: str = "") -> str:
+    place = " ".join(fold(venue).split())
+    for category, pattern in _VENUE_PATTERNS:
+        if pattern.search(place):
+            return category
     text = " ".join(fold(f"{title} {description}").split())
     text = _IGNORED_PATTERN.sub(" ", text)
     for category, pattern in _CATEGORY_PATTERNS:
@@ -182,7 +204,7 @@ def _normalize_jsonld(item: dict, page_url: str = "") -> dict | None:
         "end_date": end_date,
         "location": location,
         "address": address,
-        "category": categorize(title, description),
+        "category": categorize(title, description, location),
         "subcategory": "",
         "description": description,
         "image": _extract_image(item.get("image")),
@@ -278,7 +300,7 @@ def parse_ics(text: str, page_url: str = "") -> list[dict]:
                     "id": _gen_id(title, date), "title": title, "date": date,
                     "time": time_str, "end_date": end_date if end_date != date else "",
                     "location": venue.strip(), "address": address.strip(),
-                    "category": categorize(title, description), "subcategory": "",
+                    "category": categorize(title, description, venue), "subcategory": "",
                     "description": description, "image": "", "price": "",
                     "url": current.get("URL", "").strip() or page_url,
                     "tags": [], "featured": False,
@@ -308,76 +330,68 @@ def _detail_links(soup: BeautifulSoup, page_url: str, pattern: str) -> list[str]
     return links
 
 
-def _detail_pattern(url: str) -> str | None:
+def _on_site(url: str, domain: str) -> bool:
     host = urlparse(url).netloc.lower()
+    return host == domain or host.endswith("." + domain)
+
+
+def _detail_pattern(url: str) -> str | None:
     for domain, pattern in config.DETAIL_LINK_PATTERNS:
-        if host == domain or host.endswith("." + domain):
+        if _on_site(url, domain):
             return pattern
     return None
 
 
-HTML_CARD_LIMIT = 80
+def _text(tag) -> str:
+    return tag.get_text(" ", strip=True) if tag else ""
 
 
-def _extract_html_events(soup: BeautifulSoup, base_url: str) -> tuple[list[dict], bool]:
-    """Heuristic fallback: scan for elements that look like event cards.
+_SWISS_DAY = re.compile(r"(\d{2})\.(\d{2})\.(\d{4})")
 
-    Also returns whether every candidate was read (False past HTML_CARD_LIMIT).
+
+def read_lausanne_tourisme(text: str, page_url: str) -> list[dict]:
+    """Event cards of www.lausanne-tourisme.ch/fr/evenement/ (all on one page).
+
+    A card gives title, teaser, date ("01.11.2026") or range ("27.05.2026 -
+    16.12.2026"), venue, image and link. Time and price are only on each
+    event's own page and are not read here.
     """
-    selector = re.compile(r"event|agenda|card|show|spectacle|concert", re.IGNORECASE)
-    candidates = soup.find_all(["article", "li", "div"], class_=selector, limit=HTML_CARD_LIMIT + 1)
-
+    soup = BeautifulSoup(text, "lxml")
     events: list[dict] = []
-    for card in candidates[:HTML_CARD_LIMIT]:
-        evt = _parse_card(card, base_url)
-        if evt:
-            events.append(evt)
-    return events, len(candidates) <= HTML_CARD_LIMIT
+    for card in soup.select("div.teaser--post-type-event"):
+        title = _text(card.select_one(".teaser__title"))
+        if not title:
+            continue
+        days = [f"{y}-{m}-{d}" for d, m, y in
+                _SWISS_DAY.findall(_text(card.select_one(".teaser__suptitle .date__date")))]
+        date = days[0] if days else ""
+        end_date = days[-1] if days and days[-1] != date else ""
+        description = _text(card.select_one(".teaser__content"))
+        venue = _text(card.select_one(".gmtLocation"))
+        link = card.select_one("a[href]")
+        image = card.select_one("img.teaser__image")
+        events.append({
+            "id": _gen_id(title, date), "title": title, "date": date, "time": "",
+            "end_date": end_date, "location": venue,
+            "address": "", "category": categorize(title, description, venue), "subcategory": "",
+            "description": description, "image": image.get("src", "") if image else "",
+            "price": "", "url": urljoin(page_url, link["href"]) if link else page_url,
+            "tags": [], "featured": False,
+        })
+    return events
 
 
-def _parse_card(card: Tag, base_url: str) -> dict | None:
-    title_tag = card.find(["h1", "h2", "h3", "h4"])
-    if not title_tag:
-        return None
-    title = title_tag.get_text(strip=True)
-    if not title or len(title) < 4:
-        return None
+# Sites read with their own rules: domain -> reader(page text, page URL).
+SITE_READERS = {
+    "lausanne-tourisme.ch": read_lausanne_tourisme,
+}
 
-    time_tag = card.find("time")
-    date = ""
-    if time_tag:
-        date = (time_tag.get("datetime") or time_tag.get_text(strip=True))[:10]
 
-    desc_tag = card.find("p")
-    description = desc_tag.get_text(strip=True)[:400] if desc_tag else ""
-
-    img_tag = card.find("img")
-    image = ""
-    if img_tag:
-        image = img_tag.get("src", "") or img_tag.get("data-src", "")
-        if image:
-            image = urljoin(base_url, image)
-
-    link_tag = card.find("a", href=True)
-    url = urljoin(base_url, link_tag["href"]) if link_tag else ""
-
-    return {
-        "id": _gen_id(title, date),
-        "title": title,
-        "date": date,
-        "time": "",
-        "end_date": "",
-        "location": "",
-        "address": "",
-        "category": categorize(title, description),
-        "subcategory": "",
-        "description": description,
-        "image": image,
-        "price": "",
-        "url": url,
-        "tags": [],
-        "featured": False,
-    }
+def _site_reader(url: str):
+    for domain, reader in SITE_READERS.items():
+        if _on_site(url, domain):
+            return domain, reader
+    return None
 
 
 class FetchError(Exception):
@@ -392,6 +406,10 @@ def _fetch(url: str) -> str:
     try:
         resp = requests.get(url, headers=headers, timeout=config.SCRAPE_TIMEOUT_SECONDS)
         resp.raise_for_status()
+        # Without a declared charset, requests reads text as Latin-1, which
+        # turns the UTF-8 "fête" of a calendar file into "fÃªte".
+        if "charset" not in resp.headers.get("Content-Type", "").lower():
+            resp.encoding = "utf-8"
         return resp.text
     except requests.RequestException as exc:
         raise FetchError(str(exc)) from exc
@@ -401,13 +419,17 @@ def scrape_one(url: str) -> tuple[list[dict], str, bool]:
     """Collect one source. Returns (events, method used, complete).
 
     complete is False when part of the source could not be read (an event
-    page failed, more event pages than MAX_DETAIL_PAGES, more cards than
-    HTML_CARD_LIMIT): the events found are then not the source's whole
-    programme. Raises FetchError.
+    page failed, or more event pages than MAX_DETAIL_PAGES): the events
+    found are then not the source's whole programme. Raises FetchError.
     """
     text = _fetch(url)
     if text.lstrip().startswith("BEGIN:VCALENDAR"):
         return parse_ics(text, url), "ical", True
+
+    site = _site_reader(url)
+    if site:
+        domain, reader = site
+        return reader(text, url), f"lecteur {domain}", True
 
     soup = BeautifulSoup(text, "lxml")
     found = _extract_jsonld_events(soup, url)
@@ -430,16 +452,62 @@ def scrape_one(url: str) -> tuple[list[dict], str, bool]:
         complete = failed == 0 and len(links) == len(all_links)
         return found, f"pages-detail ({len(links)} liens)", complete
 
-    found, complete = _extract_html_events(soup, base_url=url)
-    return found, "html", complete
+    return [], "aucun format reconnu", True
+
+
+# Venue names that two sources write differently for the same place.
+VENUE_ALIASES: dict[str, str] = {
+    "salle paderewski": "casino de montbenon",  # the hall inside the Casino
+}
+
+# Title words too common to show that two titles name the same event.
+_GENERIC_WORDS = {
+    "les", "des", "une", "the", "and", "avec", "pour", "sur", "dans", "par", "aux",
+    "concert", "soiree", "spectacle", "visite", "guidee", "atelier", "exposition",
+    "film", "projection", "festival", "live", "party", "night", "show",
+}
+
+
+def _venue_key(venue: str) -> str:
+    key = " ".join(fold(venue).split())
+    return VENUE_ALIASES.get(key, key)
+
+
+def _title_words(title: str) -> set[str]:
+    words = {w[:-1] if len(w) > 3 and w.endswith("s") else w for w in re.findall(r"\w+", fold(title))}
+    return {w for w in words if len(w) >= 3 and w not in _GENERIC_WORDS}
+
+
+def _drop_duplicates(events: list[dict]) -> list[dict]:
+    """Remove an event that a later source gives again under another title.
+
+    Two events are the same when they start the same day at the same venue
+    and their titles share a distinctive word ("OCL: Grand Concert 2" and
+    "Les Grands Concerts n°2 | Christie"). The later source's version is
+    kept: venues come after aggregators and usually give the time.
+    """
+    kept: dict[str, dict] = {}
+    by_slot: dict[tuple[str, str], list[str]] = {}
+    for evt in events:
+        slot = (evt.get("date", ""), _venue_key(evt.get("location", "")))
+        if all(slot):
+            words = _title_words(evt["title"])
+            for other_id in by_slot.get(slot, []):
+                other = kept.get(other_id)
+                if other and other["source"] != evt["source"] and words & _title_words(other["title"]):
+                    del kept[other_id]
+            by_slot.setdefault(slot, []).append(evt["id"])
+        kept[evt["id"]] = evt
+    return list(kept.values())
 
 
 def scrape_sources(sources: Iterable[str] | None = None) -> tuple[list[dict], dict[str, int]]:
     """Scrape every source URL.
 
     Returns the deduplicated events, each tagged with the source URL that
-    gave it (the last one when several sources give the same event), and
-    the number of events given by each source that answered in full.
+    gave it (the last one when several sources give the same event, see
+    _drop_duplicates), and the number of events given by each source that
+    answered in full.
     """
     sources = sources or config.SCRAPE_SOURCES
     aggregated: dict[str, dict] = {}
@@ -463,7 +531,7 @@ def scrape_sources(sources: Iterable[str] | None = None) -> tuple[list[dict], di
         db.log_scrape("scraper", url, status, len(found), method)
         logger.info("Scraped %d events from %s (%s)", len(found), url, method)
 
-    return list(aggregated.values()), complete_counts
+    return _drop_duplicates(list(aggregated.values())), complete_counts
 
 
 def refresh_database(sources: Iterable[str] | None = None) -> int:

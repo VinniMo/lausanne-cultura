@@ -337,7 +337,10 @@
             el.textContent = 'Aucun événement collecté pour l\'instant : la page affiche des données de démonstration fictives.';
             return;
         }
-        let text = `Programme collecté automatiquement sur ${d.source_count} sites de lieux et d'agendas lausannois, mis à jour au plus une fois par heure.`;
+        const sites = d.source_sites.length > 1
+            ? `${d.source_sites.slice(0, -1).join(', ')} et ${d.source_sites.at(-1)}`
+            : d.source_sites.join('');
+        let text = `Programme repris automatiquement de ${sites}, mis à jour au plus une fois par heure.`;
         if (d.last_update) {
             const t = new Date(d.last_update);
             text += ` Dernière collecte : ${t.toLocaleDateString('fr-CH', { day: 'numeric', month: 'long' })} à ${t.toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' })}.`;
@@ -471,7 +474,7 @@
         const shareBtn = h('button', { type: 'button', class: 'btn btn-ink', onclick: () => share(evt) },
             svgIcon('share'), 'Partager');
         const linkBtn = hasLink(evt)
-            ? h('a', { class: 'btn', href: evt.url, target: '_blank', rel: 'noopener' }, 'Site officiel', svgIcon('out'),
+            ? h('a', { class: 'btn', href: evt.url, target: '_blank', rel: 'noopener' }, 'Plus d\'infos', svgIcon('out'),
                 h('span', { class: 'sr-only' }, '(nouvel onglet)'))
             : null;
         const hideBtn = hasVenue(evt)

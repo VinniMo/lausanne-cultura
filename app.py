@@ -7,6 +7,7 @@ import secrets
 import threading
 import time
 from datetime import datetime
+from urllib.parse import urlparse
 
 from flask import Flask, Response, jsonify, render_template, request
 from flask_cors import CORS
@@ -145,7 +146,7 @@ def create_app() -> Flask:
             "rubrics": list(agenda.RUBRIC_ORDER),
             "small_price_chf": agenda.SMALL_PRICE_CHF,
             "last_update": datetime.fromtimestamp(last, agenda.TZ).isoformat() if last else None,
-            "source_count": len(config.SCRAPE_SOURCES),
+            "source_sites": sorted({urlparse(u).netloc.removeprefix("www.") for u in config.SCRAPE_SOURCES}),
         })
 
     @app.route("/api/categories")

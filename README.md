@@ -11,7 +11,7 @@ lausannoise dans une interface artistique, épurée et très visuelle.
 | Couche       | Choix                                                                    |
 |--------------|--------------------------------------------------------------------------|
 | Backend      | Flask 3 · application factory · SQLite (persistance)                     |
-| Scraping     | `requests` + `BeautifulSoup` (JSON-LD prioritaire, fallback HTML)        |
+| Scraping     | `requests` + `BeautifulSoup` (iCal, lecteurs par site, JSON-LD)          |
 | Frontend     | HTML5 sémantique · CSS mobile-first · Vanilla JS                         |
 | Typographie  | Fraunces (serif éditorial) + Inter (UI)                                  |
 
@@ -22,7 +22,7 @@ lausannoise dans une interface artistique, épurée et très visuelle.
 ├── app.py          # Flask factory + routes
 ├── config.py       # Config immuable (env vars)
 ├── db.py           # Couche SQLite (init, upsert, queries)
-├── scraper.py      # Scraping JSON-LD + fallback HTML
+├── scraper.py      # Collecte : iCal, lecteurs par site, JSON-LD
 ├── seed_data.py    # Dataset de fallback (25 événements)
 ├── templates/
 │   └── index.html
@@ -32,6 +32,11 @@ lausannoise dans une interface artistique, épurée et très visuelle.
 └── .devcontainer/
     └── devcontainer.json
 ```
+
+## Sources
+
+Les sources collectées, celles qui attendent un lecteur et celles retirées
+sont décrites dans [SOURCES.md](SOURCES.md).
 
 ## Endpoints
 
