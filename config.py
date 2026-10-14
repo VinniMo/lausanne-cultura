@@ -25,58 +25,37 @@ class Config:
         "Mozilla/5.0 (compatible; LausanneCultura/1.0; +https://github.com/VinniMo/lausanne-cultura)",
     )
 
+    # Only sources the scraper can read today. SOURCES.md lists every source
+    # audited live (13.10.2026): those waiting for a reader, with their
+    # address and format, and those dropped, with the reason.
+
     # ----- Tier 1: aggregators (broad coverage, few sources) -----
     SCRAPE_AGGREGATORS: tuple[str, ...] = (
-        "https://agenda.lausanne.ch/",
-        "https://www.lausanne.ch/vie-pratique/culture-et-loisirs/agenda.html",
-        "https://ra.co/events/ch/lausanne",
-        "https://shotgun.live/fr/cities/lausanne",
-        "https://plateforme10.ch/agenda",
-        # Regroupent aussi des bars et petits lieux (Barberousse, Jumeaux,
-        # Romandie...). Adresses trouvées par recherche, à confirmer avec
-        # /api/sources une fois en ligne.
+        # About 1,200 events in some 200 places, bars and small venues
+        # included, all on one page (read by scraper.read_lausanne_tourisme).
         "https://www.lausanne-tourisme.ch/fr/evenement/",
-        "https://www.guidle.com/fr/evenements/lausanne",
     )
 
     # Listing pages whose events live on their own pages: follow the links
     # whose path matches the pattern and read each page's JSON-LD.
-    DETAIL_LINK_PATTERNS: tuple[tuple[str, str], ...] = (
-        ("lausanne-tourisme.ch", r"^/fr/evenement/[a-z0-9-]+/?$"),
-        ("guidle.com", r"^/fr/evenements/[^/]+_[A-Za-z0-9]+/?$"),
-    )
+    # None in use at the moment (see SOURCES.md).
+    DETAIL_LINK_PATTERNS: tuple[tuple[str, str], ...] = ()
     MAX_DETAIL_PAGES: int = int(os.environ.get("MAX_DETAIL_PAGES", "40"))
 
-    # ----- Tier 2: venue-specific (alternative & niche scenes) -----
+    # Event pages that complete a listing (days, time, price, address):
+    # read soonest events first, a few per collection, with a pause between
+    # pages, and read again once they are older than DETAIL_MAX_AGE_DAYS.
+    DETAIL_PAGES_PER_RUN: int = int(os.environ.get("DETAIL_PAGES_PER_RUN", "150"))
+    DETAIL_PAUSE_SECONDS: float = float(os.environ.get("DETAIL_PAUSE", "1"))
+    DETAIL_MAX_AGE_DAYS: int = int(os.environ.get("DETAIL_MAX_AGE_DAYS", "7"))
+
+    # ----- Tier 2: venue-specific (complete the aggregators) -----
+    # Listed after the aggregators: when both give the same event, the
+    # venue's version is kept.
     SCRAPE_VENUES: tuple[str, ...] = (
-        # Théâtre & danse
-        "https://vidy.ch/programme",
-        "https://arsenic.ch/saison",
-        "https://tkm.ch/saison",
-        "https://www.theatredebeaulieu.ch/programme",
-        "https://www.theatre-octogone.ch/saison",
-        # Concerts & alternatif
-        "https://lesdocks.ch/agenda",
-        "https://leromandie.ch/programme",
-        "https://le-bourg.ch/programme",
-        "https://www.chorus.ch/agenda",
-        "https://casinodemontbenon.ch/agenda",
-        # Clubbing
-        "https://dclub.ch/events",
-        "https://mad.ch/agenda",
-        "https://folklore-club.ch/events",
-        # Musique classique
-        "https://www.opera-lausanne.ch/saison",
-        "https://www.ocl.ch/concerts",
-        # Musées
-        "https://www.mcba.ch/expositions",
-        "https://elysee.ch/expositions",
-        "https://mudac.ch/expositions",
-        "https://www.fondation-hermitage.ch/expositions",
-        # Cinéma
-        "https://www.cinematheque.ch/programme",
-        "https://www.cinemabellevaux.ch/programme",
-        "https://zinema.ch/programme",
+        # Orchestre de Chambre de Lausanne: season calendar file (iCal).
+        # Its name changes with each season.
+        "https://www.ocl.ch/wp-content/uploads/2026/05/OCL_2026-2027_Saison_Complete.ics",
     )
 
     @property

@@ -11,7 +11,7 @@ lausannoise dans une interface artistique, épurée et très visuelle.
 | Couche       | Choix                                                                    |
 |--------------|--------------------------------------------------------------------------|
 | Backend      | Flask 3 · application factory · SQLite (persistance)                     |
-| Scraping     | `requests` + `BeautifulSoup` (JSON-LD prioritaire, fallback HTML)        |
+| Scraping     | `requests` + `BeautifulSoup` (iCal, lecteurs par site, JSON-LD)          |
 | Frontend     | HTML5 sémantique · CSS mobile-first · Vanilla JS                         |
 | Typographie  | Fraunces (serif éditorial) + Inter (UI)                                  |
 
@@ -22,7 +22,7 @@ lausannoise dans une interface artistique, épurée et très visuelle.
 ├── app.py          # Flask factory + routes
 ├── config.py       # Config immuable (env vars)
 ├── db.py           # Couche SQLite (init, upsert, queries)
-├── scraper.py      # Scraping JSON-LD + fallback HTML
+├── scraper.py      # Collecte : iCal, lecteurs par site, JSON-LD
 ├── seed_data.py    # Dataset de fallback (25 événements)
 ├── templates/
 │   └── index.html
@@ -33,6 +33,11 @@ lausannoise dans une interface artistique, épurée et très visuelle.
     └── devcontainer.json
 ```
 
+## Sources
+
+Les sources collectées, celles qui attendent un lecteur et celles retirées
+sont décrites dans [SOURCES.md](SOURCES.md).
+
 ## Endpoints
 
 | Méthode | URL               | Rôle                                          |
@@ -40,7 +45,7 @@ lausannoise dans une interface artistique, épurée et très visuelle.
 | GET     | `/`               | Application                                   |
 | GET     | `/api/events`     | Liste filtrable (`?category=…&search=…`)      |
 | GET     | `/api/categories` | Catégories disponibles + comptes              |
-| GET/POST| `/api/refresh`    | Force un scrape immédiat                      |
+| GET/POST| `/api/refresh`    | Lance une collecte en arrière-plan            |
 | GET     | `/api/sources`    | Diagnostic : état et nombre d'événements par source |
 | GET     | `/api/health`     | Statut + nombre d'événements + dernier scrape |
 
@@ -75,6 +80,9 @@ Pas besoin d'API key GitHub CLI — tout est piloté par
 | `LAUSANNE_DB`     | `./events.db`  | Chemin SQLite                     |
 | `SCRAPE_INTERVAL` | `3600`         | TTL du cache scraping (secondes)  |
 | `SCRAPE_TIMEOUT`  | `12`           | Timeout HTTP du scraper           |
+| `DETAIL_PAGES_PER_RUN` | `150`     | Fiches d'événement lues par collecte (jours, heure, prix) |
+| `DETAIL_PAUSE`    | `1`            | Pause entre deux fiches (secondes) |
+| `DETAIL_MAX_AGE_DAYS` | `7`        | Âge au-delà duquel une fiche est relue |
 
 ## Design
 

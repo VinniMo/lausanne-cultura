@@ -120,20 +120,80 @@ def weekend_days(today: date) -> tuple[date, date]:
     return saturday, saturday + timedelta(days=1)
 
 
-def _time_key(evt: dict) -> tuple:
-    t = (evt.get("time") or "").strip()
-    return (t == "", t, fold(evt.get("title", "")))
+def _block_times(block: dict, day: date) -> list[str] | None:
+    """Start times of a schedule block on that day, or None when it is off."""
+    if not block["from"] <= day.isoformat() <= block["to"]:
+        return None
+    if not block["times"]:
+        return [""]
+    return block["times"].get(str(day.weekday()))
+
+
+def times_on(evt: dict, day: date) -> list[str] | None:
+    """Start times of an event on a day ("" when unknown), or None when it is not on.
+
+    With a schedule (days and times read on the event's own page), only the
+    days it lists count; otherwise every day from start to end does.
+    """
+    if evt.get("schedule"):
+        for block in evt["schedule"]:
+            found = _block_times(block, day)
+            if found is not None:
+                return found
+        return None
+    start = parse_day(evt.get("date", ""))
+    end = parse_day(evt.get("end_date", "")) or start
+    if start is None or not start <= day <= max(start, end):
+        return None
+    return [evt.get("time") or ""]
+
+
+def next_day_on(evt: dict, day: date) -> date | None:
+    """First day from `day` on which the event is on, or None when it is over."""
+    if not evt.get("schedule"):
+        start = parse_day(evt.get("date", ""))
+        end = parse_day(evt.get("end_date", "")) or start
+        if start is None or max(start, end) < day:
+            return None
+        return max(start, day)
+    found = []
+    for block in evt["schedule"]:
+        first = max(date.fromisoformat(block["from"]), day)
+        for offset in range(7):  # a weekly block is on at least once a week
+            candidate = first + timedelta(days=offset)
+            if candidate.isoformat() > block["to"]:
+                break
+            if _block_times(block, candidate) is not None:
+                found.append(candidate)
+                break
+    return min(found, default=None)
+
+
+def _first_time(times: list[str]) -> str:
+    return next((t for t in times if t), "")
+
+
+def _day_block(day: date | None, hits: list[tuple[str, dict]]) -> dict:
+    """One day of the programme: ids in time order, and each one's time that day."""
+    hits = sorted(hits, key=lambda h: (h[0] == "", h[0], fold(h[1].get("title", ""))))
+    return {
+        "date": day.isoformat() if day else None,
+        "ids": [e["id"] for _, e in hits],
+        "times": {e["id"]: t for t, e in hits},
+    }
 
 
 def build_programme(events: list[dict], today: date) -> dict:
     """Drop past events and lay the rest out by moment, then by day.
 
-    An event is past when its end date (or its start date when it has no end)
-    is before today. A multi-day event appears on each of its days inside the
-    Ce soir / Demain / Week-end windows; "Plus tard" lists, by start date,
-    what starts after tomorrow outside the week-end, so long exhibitions
-    already running are not repeated there.
-    Events without a readable date are kept in "Plus tard", flagged undated.
+    An event is past when it is on no day from today. Inside the Ce soir /
+    Demain / Week-end windows, an event appears on each day it is on: every
+    day of its range, or only the days of its schedule when its own page
+    gave one (a weekly Thursday event shows on Thursdays). "Plus tard"
+    lists each event once, on its next day after tomorrow outside the
+    week-end, so what is already running is not repeated there. Events
+    without a readable date are kept in "Plus tard", flagged undated.
+    Each day gives every event's time on that day.
     """
     tomorrow = today + timedelta(days=1)
     sat, sun = weekend_days(today)
@@ -145,41 +205,40 @@ def build_programme(events: list[dict], today: date) -> dict:
         evt = dict(raw)
         evt["rubric"] = rubric_for(evt.get("category", ""))
         evt.update(read_price(evt.get("price", "")))
-        start = parse_day(evt.get("date", ""))
-        end = parse_day(evt.get("end_date", "")) or start
-        if start is None:
+        if parse_day(evt.get("date", "")) is None:
             evt["undated"] = True
             undated.append(evt)
             continue
-        if end < start:
-            end = start
-        if end < today:
+        nxt = next_day_on(evt, today)
+        if nxt is None:
             continue
         evt["undated"] = False
-        evt["_start"], evt["_end"] = start, end
+        evt["_next"] = nxt
         upcoming.append(evt)
 
-    def on(day: date) -> list[str]:
-        hits = [e for e in upcoming if e["_start"] <= day <= e["_end"]]
-        return [e["id"] for e in sorted(hits, key=_time_key)]
+    def on(day: date) -> list[tuple[str, dict]]:
+        hits = []
+        for e in upcoming:
+            times = times_on(e, day)
+            if times is not None:
+                hits.append((_first_time(times), e))
+        return hits
 
     def window(*days: date) -> list[dict]:
         seen: list[date] = []
         for d in days:
             if d not in seen:
                 seen.append(d)
-        return [{"date": d.isoformat(), "ids": on(d)} for d in seen if on(d)]
+        blocks = [_day_block(d, on(d)) for d in seen]
+        return [b for b in blocks if b["ids"]]
 
-    later_by_day: dict[date, list[dict]] = {}
+    later_by_day: dict[date, list[tuple[str, dict]]] = {}
     for e in upcoming:
-        if e["_start"] > tomorrow and e["_start"] not in weekend:
-            later_by_day.setdefault(e["_start"], []).append(e)
-    later = [
-        {"date": d.isoformat(), "ids": [e["id"] for e in sorted(later_by_day[d], key=_time_key)]}
-        for d in sorted(later_by_day)
-    ]
+        if e["_next"] > tomorrow and e["_next"] not in weekend:
+            later_by_day.setdefault(e["_next"], []).append((_first_time(times_on(e, e["_next"])), e))
+    later = [_day_block(d, later_by_day[d]) for d in sorted(later_by_day)]
     if undated:
-        later.append({"date": None, "ids": [e["id"] for e in sorted(undated, key=_time_key)]})
+        later.append(_day_block(None, [(e.get("time") or "", e) for e in undated]))
 
     days = {
         "tonight": window(today),
@@ -193,8 +252,15 @@ def build_programme(events: list[dict], today: date) -> dict:
         moments.append({"key": key, "label": label, "count": len(ids), "days": days[key]})
 
     for e in upcoming:
-        e["ongoing"] = e["_start"] < today
-        e.pop("_start"), e.pop("_end")
+        start = parse_day(e["date"])
+        e["ongoing"] = start < today
+        if e.get("schedule"):
+            # The sheet speaks of the next time the event is on.
+            e["next_date"] = e["_next"].isoformat()
+            e["time"] = _first_time(times_on(e, e["_next"]))
+        e.pop("_next")
+    for e in upcoming + undated:
+        e.pop("schedule", None)
     return {
         "today": today.isoformat(),
         "weekend": [sat.isoformat(), sun.isoformat()],

@@ -98,8 +98,10 @@
         let masked = 0;
         const shown = [];
         for (const id of block.ids) {
-            const evt = state.byId.get(id);
-            if (!evt) continue;
+            const base = state.byId.get(id);
+            if (!base) continue;
+            // An event on several days can start at a different time each day.
+            const evt = block.times && id in block.times ? { ...base, time: block.times[id] } : base;
             if (state.cheap && !isSmallPrice(evt)) continue;
             const m = isMasked(evt);
             if (m) masked += 1;
@@ -337,7 +339,10 @@
             el.textContent = 'Aucun événement collecté pour l\'instant : la page affiche des données de démonstration fictives.';
             return;
         }
-        let text = `Programme collecté automatiquement sur ${d.source_count} sites de lieux et d'agendas lausannois, mis à jour au plus une fois par heure.`;
+        const sites = d.source_sites.length > 1
+            ? `${d.source_sites.slice(0, -1).join(', ')} et ${d.source_sites.at(-1)}`
+            : d.source_sites.join('');
+        let text = `Programme repris automatiquement de ${sites}, mis à jour au plus une fois par heure.`;
         if (d.last_update) {
             const t = new Date(d.last_update);
             text += ` Dernière collecte : ${t.toLocaleDateString('fr-CH', { day: 'numeric', month: 'long' })} à ${t.toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' })}.`;
@@ -454,6 +459,12 @@
     function whenText(evt) {
         if (!evt.date) return h('span', { class: 'nc' }, 'Date non communiquée');
         const multi = evt.end_date && evt.end_date !== evt.date;
+        if (multi && evt.next_date) {
+            // Days known from the event's page: name the next one, not the whole range.
+            const next = dayLabel(evt.next_date);
+            return [next.charAt(0).toUpperCase() + next.slice(1),
+                h('small', {}, `${evt.time ? `À ${evt.time}` : 'Heure non communiquée'} · autres dates jusqu'au ${shortFmt.format(parseDay(evt.end_date))}`)];
+        }
         const dates = multi
             ? `Du ${shortFmt.format(parseDay(evt.date))} au ${shortFmt.format(parseDay(evt.end_date))}`
             : dayLabel(evt.date);
@@ -461,12 +472,17 @@
             h('small', {}, evt.time ? `${multi ? 'Dès' : 'À'} ${evt.time}` : 'Heure non communiquée')];
     }
 
+    /** Site the event was collected from ("vidy.ch"), or '' for demo events. */
+    function sourceSite(evt) {
+        try { return new URL(evt.source).hostname.replace(/^www\./, ''); } catch { return ''; }
+    }
+
     function renderEventSheet(evt) {
         const venueHidden = hasVenue(evt) && tastes.venues.includes(venueKey(evt));
         const shareBtn = h('button', { type: 'button', class: 'btn btn-ink', onclick: () => share(evt) },
             svgIcon('share'), 'Partager');
         const linkBtn = hasLink(evt)
-            ? h('a', { class: 'btn', href: evt.url, target: '_blank', rel: 'noopener' }, 'Site officiel', svgIcon('out'),
+            ? h('a', { class: 'btn', href: evt.url, target: '_blank', rel: 'noopener' }, 'Plus d\'infos', svgIcon('out'),
                 h('span', { class: 'sr-only' }, '(nouvel onglet)'))
             : null;
         const hideBtn = hasVenue(evt)
@@ -474,7 +490,8 @@
                 venueHidden ? `Ne plus masquer ${evt.location}` : `Masquer ${evt.location}`)
             : null;
 
-        $('#sheet-body').replaceChildren(
+        // replaceChildren writes null as the text "null": drop absent parts first.
+        $('#sheet-body').replaceChildren(...[
             h('h2', { class: 'ev-title', id: 'sheet-title' }, evt.title),
             h('dl', { class: 'ev-facts' },
                 h('div', {}, h('dt', {}, 'Rubrique'), h('dd', {}, h('span', { class: `tag ${tagClass(evt.rubric)}` }, evt.rubric))),
@@ -483,11 +500,12 @@
                     hasVenue(evt) ? evt.location : h('span', { class: 'nc' }, 'Lieu non communiqué'),
                     evt.address && fold(evt.address) !== venueKey(evt) ? h('small', {}, evt.address) : null)),
                 h('div', {}, h('dt', {}, 'Prix'), h('dd', {},
-                    evt.known && evt.price ? evt.price : h('span', { class: 'nc' }, 'Prix non communiqué')))),
+                    evt.known && evt.price ? evt.price : h('span', { class: 'nc' }, 'Prix non communiqué'))),
+                sourceSite(evt) ? h('div', {}, h('dt', {}, 'Source'), h('dd', {}, sourceSite(evt))) : null),
             evt.description ? h('p', { class: 'ev-desc' }, evt.description) : null,
             state.data.demo ? h('p', { class: 'ev-demo' }, 'Événement fictif (données de démonstration).') : null,
             h('div', { class: 'sheet-actions' }, shareBtn, linkBtn),
-            hideBtn);
+            hideBtn].filter(Boolean));
         eventSheet.dataset.eventId = evt.id;
     }
 
@@ -506,7 +524,8 @@
 
     async function share(evt) {
         const url = `${location.origin}${location.pathname}#e=${encodeURIComponent(evt.id)}`;
-        const when = evt.date ? `${dayLabel(evt.date)}${evt.time ? ` à ${evt.time}` : ''}` : '';
+        const day = evt.next_date || evt.date;
+        const when = day ? `${dayLabel(day)}${evt.time ? ` à ${evt.time}` : ''}` : '';
         const text = [evt.title, [when, hasVenue(evt) ? evt.location : ''].filter(Boolean).join(', ')].filter(Boolean).join(' · ');
         if (navigator.share) {
             try { await navigator.share({ title: evt.title, text, url }); return; } catch (err) {
@@ -670,11 +689,11 @@
 
     function toast(message, actionLabel, onAction) {
         clearTimeout(toastTimer);
-        toastEl.replaceChildren(h('span', {}, message),
+        toastEl.replaceChildren(...[h('span', {}, message),
             actionLabel ? h('button', {
                 type: 'button',
                 onclick: () => { toastEl.hidden = true; onAction(); },
-            }, actionLabel) : null);
+            }, actionLabel) : null].filter(Boolean));
         toastEl.hidden = false;
         toastTimer = setTimeout(() => { toastEl.hidden = true; }, actionLabel ? 6000 : 3000);
     }
